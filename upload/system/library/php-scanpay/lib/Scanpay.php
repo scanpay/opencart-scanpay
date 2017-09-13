@@ -22,7 +22,7 @@ class Scanpay
 
         $this->_headers = array(
             'Authorization: Basic ' . base64_encode($apikey),
-            'X-Scanpay-SDK: PHP-1.1.0',
+            'X-Shop-Plugin: opencart/0.1',
             'Content-Type: application/json',
         );
 
