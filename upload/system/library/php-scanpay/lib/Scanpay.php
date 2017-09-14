@@ -9,7 +9,7 @@ class Scanpay
     public function __construct($apikey = '')
     {
         // Check if libcurl is enabled
-        if (!function_exists('curl_init')) { throw new Exception('Enable php-curl.'); }
+        if (!function_exists('curl_init')) { throw new \Exception('Enable php-curl.'); }
 
         // Public cURL handle (we want to reuse connections)
         $this->ch = curl_init();
