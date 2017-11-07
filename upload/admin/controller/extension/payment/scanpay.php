@@ -1,25 +1,12 @@
 <?php
-class ControllerExtensionPaymentScanpay extends Controller {
-    private $error = array();
+
+require_once('abstract-scanpay.php');
+
+class ControllerExtensionPaymentScanpay extends AbstractControllerExtensionPaymentScanpay {
 
     public function index() {
-        $this->language->load('extension/payment/scanpay');
-        $this->document->setTitle($this->language->get('heading_title'));
-        $this->load->model('setting/setting');
         $this->load->model('extension/payment/scanpay');
-        if (($this->request->server['REQUEST_METHOD'] === 'POST') && $this->validate()) {
-            if (isset($this->request->post['pingurl'])) {
-                unset($this->request->post['pingurl']);
-            }
-            $this->model_setting_setting->editSetting('payment_scanpay', $this->request->post);
-            $this->session->data['success'] = $this->language->get('text_success');
-            $this->response->redirect($this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token']  . '&type=payment', true));
-        }
-        $data['action'] = $this->url->link('extension/payment/scanpay', 'user_token=' . $this->session->data['user_token'], true);
-        $data['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=payment', true);
-        $data = $this->fillconfigdata($data, ['payment_scanpay_status', 'payment_scanpay_language', 'payment_scanpay_apikey', 'payment_scanpay_autocapture', 'payment_scanpay_sort_order']);
         $data['pingurl'] = HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping';
-
         $shopIdStr = explode(':', $this->config->get('payment_scanpay_apikey'))[0];
         if (ctype_digit($shopIdStr) && (string)(int)$shopIdStr == $shopIdStr) {
             $seqObj = $this->model_extension_payment_scanpay->loadSeq((int)$shopIdStr);
@@ -30,12 +17,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $data['pingdt'] = $this->fmtdt(time() - $mtime);
         $data['pingstatus'] = $this->pingstatus($mtime);
 
-        $this->load->model('localisation/order_status');
-        $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
-        $data['header'] = $this->load->controller('common/header');
-        $data['column_left'] = $this->load->controller('common/column_left');
-        $data['footer'] = $this->load->controller('common/footer');
-        $this->response->setOutput($this->load->view('extension/payment/scanpay', $data));
+        $this->_index('', ['payment_scanpay_status', 'payment_scanpay_language', 'payment_scanpay_apikey', 'payment_scanpay_autocapture', 'payment_scanpay_sort_order'], $data);
     }
 
     public function install() {
@@ -84,17 +66,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
         } else {
             return 'never--pinged';
         }
-    }
-
-    protected function fillconfigdata($data, $arr) {
-        foreach ($arr as $v) {
-            if (isset($this->request->post[$v])) {
-                $data[$v] = $this->request->post[$v];
-            } else {
-                $data[$v] = $this->config->get($v);
-            }
-        }
-        return $data;
     }
 
     protected function validate() {
