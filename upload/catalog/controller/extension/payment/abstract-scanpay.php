@@ -24,7 +24,7 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
         $orderid = $this->session->data['order_id'];
         $order = $this->model_checkout_order->getOrder($orderid);
 
-        $items = $this->model_checkout_order->getOrderProducts($orderid);
+        $products = $this->model_checkout_order->getOrderProducts($orderid);
         $totals = $this->model_checkout_order->getOrderTotals($orderid);
         $apikey = $this->config->get('payment_scanpay_apikey');
 
@@ -56,44 +56,73 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
                 'company' => $order['shipping_company'],
             ]),
         ];
-        $discounts = $this->getdiscounts($items);
+        $discounts = $this->getdiscounts($products);
 
+        $items = [];
         /* Add the requested items to the request data */
-        foreach ($items as $i => $item) {
-            if ($item['total'] < 0) {
+        foreach ($products as $i => $product) {
+            if ($product['total'] < 0) {
                 $this->log->write('Cannot handle negative price for item');
                 throw new \Exception(__('Internal server error', 'woocommerce-scanpay'));
             }
 
-            $data['items'][] = [
-                'name'     => $item['name'],
-                'quantity' => intval($item['quantity']),
-                'price'    => $item['price'] + $item['tax'] - $discounts['items'][$i],
-                'sku'      => strval($item['product_id']),
+            $items[] = [
+                'name'     => $product['name'],
+                'quantity' => intval($product['quantity']),
+                'total'    => $product['total'] + $product['tax'] * $product['quantity'] - $discounts['items'][$i],
+                'sku'      => strval($product['product_id']),
             ];
         }
+
         /* Add shipping costs */
         if (isset($this->session->data['shipping_method'])) {
             $cost = $this->session->data['shipping_method']['cost'];
             $taxed = $this->tax->calculate($cost, $this->session->data['shipping_method']['tax_class_id']);
-            $data['items'][] = [
+            $items[] = [
                 'name'     => $this->session->data['shipping_method']['title'],
                 'quantity' => 1,
-                'price'    => $discounts['freeshipping'] ? 0 : $taxed,
+                'total'    => $discounts['freeshipping'] ? 0 : $taxed,
             ];
         }
 
         /* Distribute voucher and reward subtracts */
         foreach ($totals as $total) {
             if ($total['code'] === 'voucher' || $total['code'] === 'reward') {
-                $data['items'] = $this->distributeamount($data['items'], $total['value']);
+                $items = $this->distributeamount($items, $total['value']);
             }
         }
 
-        /* Add currencies to prices */
-        foreach ($data['items'] as $i => $item) {
-            $data['items'][$i]['price'] .= ' ' . $order['currency_code'];
+        /* Calculat grand total and round item totals */
+        $grandtotal = 0;
+        foreach ($items as $i => $item) {
+            $items[$i]['total'] = round($items[$i]['total'], 2);
+            $grandtotal += $items[$i]['total'];
         }
+
+        /* Better round some more due to devious floats */
+        $grandtotal = round($grandtotal, 2);
+        $ordertotal = round($order['total'], 2);
+
+        /* If the calculated grand total differs from the order total, compensate
+           by adding / subtracting amounts from items. Also convert to string
+           before comparing since float compare often will not yield the right result. */
+        if ($grandtotal . '' !== $ordertotal . '') {
+            $totdiff = round($ordertotal - $grandtotal, 2);
+
+            foreach ($items as $i => $item) {
+                /* We bound the minimum item total at 0, by bounding
+                   the difference at minus the current item total */
+                $d = max($totdiff, -$items[$i]['total']);
+                $items[$i]['total'] += $d;
+                $totdiff = round($totdiff - $d, 2);
+            }
+            throw new Exception('LUL');
+        }
+        /* Add currencies to totals */
+        foreach ($items as $i => $item) {
+            $items[$i]['total'] .= ' ' . $order['currency_code'];
+        }
+        $data['items'] = $items;
 
         $client = new Scanpay\Scanpay($apikey);
         try {
@@ -102,6 +131,7 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
             $this->log->write('scanpay client exception: ' . $e->getMessage());
             $this->response->redirect($this->url->link('extension/payment/failure', '', true));
         }
+
         $this->model_checkout_order->addOrderHistory($orderid, self::ORDER_STATUS_PENDING);
         if ($paymethod != '') { $payobj['url'] .= '?go=' . $paymethod; }
         $this->response->redirect($payobj['url'], 302);
@@ -111,17 +141,18 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
         /* Copy items into $ret */
         $ret = $items;
         $itemtotals = array_fill(0, count($items), 0);
-        $tot = 0;
+        $grandtotal = 0;
+        /* Calculate grand total from line totals */
         foreach ($items as $i => $item) {
-            $item['retindex'] = $i;
-            $itemtotals[$i] = $item['price'] * $item['quantity'];
-            $tot += $itemtotals[$i];
+            $grandtotal += $item['total'];
         }
-        /* This may yield rounding errors, however, we do not have a solution for that yet in the API */
+
+        /* Distribute the discount based on the share of the grand total */
         foreach ($items as $i => $item) {
-            $share = $item['price'] * $item['quantity'] / $tot;
-            $ret[$i]['price'] = $item['price'] + $amount / $item['quantity'] * $share;
+            $share = $item['total'] / $grandtotal;
+            $ret[$i]['total'] = $item['total'] + $amount * $share;
         }
+
         return $ret;
     }
 
@@ -152,13 +183,14 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
             }
             /* Calculate per item discount */
             if ($coupon['type'] === 'F') {
-                $discounts[$i] = $coupon['discount'] * ($item['price'] / $subtotal);
+                $discounts[$i] = $coupon['discount'] * ($item['total'] / $subtotal);
             } else if ($coupon['type'] == 'P') {
-                $discounts[$i] = $item['price'] / 100 * $coupon['discount'];
+                $discounts[$i] = $item['total'] / 100 * $coupon['discount'];
             }
             if ($product['tax_class_id']) {
                 $tax_rates = $this->tax->getRates($discounts[$i], $product['tax_class_id']);
                 foreach ($tax_rates as $tax_rate) {
+                    /* IF the tax is procentual, increase the discount by applying tax to the discounted amount and subtracting it */
                     if ($tax_rate['type'] === 'P') {
                         $discounts[$i] += $tax_rate['amount'];
                     }
@@ -166,7 +198,7 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
             }
         }
         return [
-            'items' => $discounts,
+            'items'        => $discounts,
             'freeshipping' => $coupon['shipping'],
         ];
     }
