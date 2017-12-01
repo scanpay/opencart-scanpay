@@ -116,7 +116,6 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
                 $items[$i]['total'] += $d;
                 $totdiff = round($totdiff - $d, 2);
             }
-            throw new Exception('LUL');
         }
         /* Add currencies to totals */
         foreach ($items as $i => $item) {
