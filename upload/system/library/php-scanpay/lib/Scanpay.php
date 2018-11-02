@@ -1,74 +1,68 @@
-<?php namespace Scanpay;
+<?php
+namespace Scanpay;
 
-class Scanpay
-{
-    protected $_headers;
+class Scanpay {
     protected $ch;
+    protected $headers;
     protected $apikey;
 
-    public function __construct($apikey = '')
-    {
+    public function __construct($apikey = '') {
         // Check if libcurl is enabled
-        if (!function_exists('curl_init')) { throw new \Exception('Enable php-curl.'); }
+        if (!function_exists('curl_init')) { die("ERROR: Please enable php-curl\n"); }
 
         // Public cURL handle (we want to reuse connections)
         $this->ch = curl_init();
-
-        curl_setopt_array($this->ch, array(
-            CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_TIMEOUT => 30, // Timeout after 30s
-            CURLOPT_USE_SSL => CURLUSESSL_ALL,
-        ));
-
-        $this->_headers = array(
-            'Authorization: Basic ' . base64_encode($apikey),
-            'X-Shop-Plugin: opencart/0.32',
-            'Content-Type: application/json',
-        );
-
+        $this->headers = [
+            'authorization' => 'Authorization: Basic ' . base64_encode($apikey),
+            'x-sdk' => 'X-SDK: PHP-1.3.1/'. PHP_VERSION,
+            'content-type' => 'Content-Type: application/json',
+            'expect' => 'Expect: ', // Prevent 'Expect: 100-continue' on POSTs >1024b.
+        ];
         $this->apikey = $apikey;
     }
 
-    protected function request($url, $data, $opts)
-    {
-        $headers = $this->_headers;
-
-        if (isset($opts)) {
-            if (isset($opts['headers'])) {
-                $headers = array_merge($headers, $opts['headers']);
-            }
-            if (isset($opts['auth'])) {  // redefine the API key.
-                $headers[0] = 'Authorization: Basic ' . base64_encode($opts['auth']);
+    /* Let merchant override headers and convert to regular array (cURL req.)  */
+    protected function httpHeaders($o=[]) {
+        $ret = $this->headers;
+        if (isset($o['headers'])) {
+            foreach($o['headers'] as $key => &$val) {
+                $ret[strtolower($key)] = $key . ': ' . $val;
             }
         }
+        // Redefine API Key (DEPRECATED!!!)
+        if (isset($o['auth'])) {
+            $ret['authorization'] = 'Authorization: Basic ' . base64_encode($o['auth']);
+        }
+        return array_values($ret);
+    }
 
-        if (isset($data)) {
-            curl_setopt_array($this->ch, array(
-                CURLOPT_URL => 'https://api.scanpay.dk' . $url,
-                CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => json_encode($data),
-            ));
-        } else {
-            curl_setopt_array($this->ch, array(
-                CURLOPT_URL => 'https://api.scanpay.dk' . $url,
-                CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_CUSTOMREQUEST => 'GET',
-                CURLOPT_POSTFIELDS => 0,
-            ));
+    protected function request($path, $opts=[], $data=null) {
+        $hostname = (isset($opts['hostname'])) ? $opts['hostname'] : 'api.scanpay.dk';
+        $curlopts = [
+            CURLOPT_URL => 'https://' . $hostname . $path,
+            CURLOPT_HTTPHEADER => $this->httpHeaders($opts),
+            CURLOPT_CUSTOMREQUEST => ($data === null) ? 'GET' : 'POST',
+            CURLOPT_POSTFIELDS => ($data === null) ? null : json_encode($data, JSON_UNESCAPED_SLASHES),
+            CURLOPT_VERBOSE => isset($opts['debug']) ? $opts['debug'] : 0,
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_CONNECTTIMEOUT => 20,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_USE_SSL => CURLUSESSL_ALL,
+            CURLOPT_SSLVERSION => 6, // TLSv1.2
+        ];
+        // Let the merchant override $curlopts.
+        if (isset($opts['curl'])) {
+            foreach($opts['curl'] as $key => &$val) { $curlopts[$key] = $val; }
+        }
+        curl_setopt_array($this->ch, $curlopts);
+
+        $result = curl_exec($this->ch);
+        if (!$result) {
+            throw new \Exception(curl_strerror(curl_errno($this->ch)));
         }
 
-        if (!$result = curl_exec($this->ch)) {
-            if ($errno = curl_errno($this->ch)) {
-                if (function_exists('curl_strerror')) { // PHP 5.5
-                    throw new \Exception(curl_strerror($errno));
-                }
-                throw new \Exception('curl_errno: ' . $errno);
-            }
-        }
-
-        $code = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
-        if ($code !== 200) {
+        $statusCode = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
+        if ($statusCode !== 200) {
             throw new \Exception(explode("\n", $result)[0]);
         }
 
@@ -79,30 +73,45 @@ class Scanpay
         return $resobj;
     }
 
-    public function newURL($data, $opts=null)
-    {
-        $o = $this->request('/v1/new', $data, $opts);
-        if (isset($o['url']) && strlen($o['url']) > 10) {
+    // newURL: Create a new payment link
+    public function newURL($data, $opts=[]) {
+        $o = $this->request('/v1/new', $opts, $data);
+        if (isset($o['url']) && filter_var($o['url'], FILTER_VALIDATE_URL)) {
+            return $o['url'];
+        }
+        throw new \Exception('Invalid response from server');
+    }
+
+    // seq: Get array of changes since the reqested seqnum
+    public function seq($seqnum, $opts=[]) {
+        if (!is_numeric($seqnum)) {
+            throw new \Exception('seq argument must be an integer');
+        }
+        $o = $this->request('/v1/seq/' . $seqnum, $opts);
+        if (isset($o['seq']) && is_int($o['seq'])
+                && isset($o['changes']) && is_array($o['changes'])) {
             return $o;
         }
         throw new \Exception('Invalid response from server');
     }
 
-    public function seq($seq, $opts=null)
-    {
-        $o = $this->request('/v1/seq/' . $seq, null, $opts);
-        if (isset($o['seq']) && is_int($o['seq']) && isset($o['changes']) && is_array($o['changes'])) {
-            return $o;
+    // maxSeq. (DEPRECATED!!!)
+    public function maxSeq($opts=[]) {
+        $o = $this->request('/v1/seq', $opts);
+        if (isset($o['seq']) && is_int($o['seq'])) {
+            return $o['seq'];
         }
         throw new \Exception('Invalid response from server');
     }
 
-    public function handlePing($opts=[])
-    {
+    // handlePing: Convert data to JSON and validate integrity
+    public function handlePing($opts=[]) {
+        ignore_user_abort(true);
+
         if (isset($opts['signature'])) {
-            $sig = $opts['signature'];
+            $signature = $opts['signature'];
         } else if (isset($_SERVER['HTTP_X_SIGNATURE'])) {
-            $sig = $_SERVER['HTTP_X_SIGNATURE'];
+            $signature = $_SERVER['HTTP_X_SIGNATURE'];
         } else {
             throw new \Exception('missing ping signature');
         }
@@ -112,28 +121,22 @@ class Scanpay
             throw new \Exception('unable to get ping body');
         }
 
-        $apikey = isset($opts['auth']) ? $opts['auth'] : $this->apikey;
-        $mySig = base64_encode(hash_hmac('sha256', $body, $apikey, true));
-        if (function_exists('hash_equals')) {
-            if (!hash_equals($mySig, $sig)) {
-                throw new \Exception('invalid ping signature');
-            }
-        } else if ($mySig !== $sig) {
+        $checksum = base64_encode(hash_hmac('sha256', $body, $this->apikey, true));
+
+        if (!hash_equals($checksum, $signature)) {
             throw new \Exception('invalid ping signature');
         }
 
-        $reqobj = @json_decode($body, true);
-        if ($reqobj === null) {
+        $obj = @json_decode($body, true);
+        if ($obj === null) {
             throw new \Exception('invalid json from Scanpay server');
         }
 
-        if (!isset($reqobj['seq']) || !is_int($reqobj['seq']) ||
-            !isset($reqobj['shopid']) || !is_int($reqobj['shopid']) ||
-            $reqobj['seq'] < 0 || $reqobj['shopid'] < 0) {
-            throw new \Exception('missing fields in Scanpay response');
+        if (isset($obj['seq']) && is_int($obj['seq']) &&
+            isset($obj['shopid']) && is_int($obj['shopid'])) {
+            return $obj;
         }
-
-        return $reqobj;
+        throw new \Exception('missing fields in Scanpay response');
     }
 }
 

@@ -125,15 +125,21 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
 
         $client = new Scanpay\Scanpay($apikey);
         try {
-            $payobj = $client->newURL(array_filter($data), [ 'cardholderIP' => $order['ip'] ]);
+            $opts = [
+                'headers' => [
+                    'X-Shop-Plugin' => 'opencart/' . SCANPAY_VERSION,
+                    'X-Cardholder-IP:' => $order['ip'],
+                ]
+            ];
+            $payurl = $client->newURL(array_filter($data), $opts);
         } catch (\Exception $e) {
             $this->log->write('scanpay client exception: ' . $e->getMessage());
             $this->response->redirect($this->url->link('extension/payment/failure', '', true));
         }
 
         $this->model_checkout_order->addOrderHistory($orderid, self::ORDER_STATUS_PENDING);
-        if ($paymethod != '') { $payobj['url'] .= '?go=' . $paymethod; }
-        $this->response->redirect($payobj['url'], 302);
+        if ($paymethod != '') { $payurl .= '?go=' . $paymethod; }
+        $this->response->redirect($payurl, 302);
     }
 
     protected function distributeamount($items, $amount) {
@@ -238,7 +244,12 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
 
         while ($localSeq < $remoteSeq) {
             try {
-                $resobj = $client->seq($localSeq);
+                $opts = [
+                    'headers' => [
+                        'X-Shop-Plugin' => 'opencart/' . SCANPAY_VERSION,
+                    ]
+                ];
+                $resobj = $client->seq($localSeq, $opts);
             } catch (\Exception $e) {
                 $this->log->write('scanpay client exception: ' . $e->getMessage());
                 $this->sendJSON(['error' => 'scanpay client exception: ' . $e->getMessage()], 500);
@@ -282,7 +293,7 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
             isset($data['totals']['refunded']) && $this->is_scanpay_money($data['totals']['refunded']) &&
             isset($data['acts']) && !$this->is_assoc($data['acts']) &&
             isset($data['rev']) && is_int($data['rev']);
-    }    
+    }
 
     protected function updateOrder($shopid, $data) {
 
