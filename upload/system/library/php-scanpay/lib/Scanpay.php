@@ -22,7 +22,7 @@ class Scanpay
 
         $this->_headers = array(
             'Authorization: Basic ' . base64_encode($apikey),
-            'X-Shop-Plugin: opencart/0.3',
+            'X-Shop-Plugin: opencart/0.32',
             'Content-Type: application/json',
         );
 
@@ -116,7 +116,7 @@ class Scanpay
         $mySig = base64_encode(hash_hmac('sha256', $body, $apikey, true));
         if (function_exists('hash_equals')) {
             if (!hash_equals($mySig, $sig)) {
-                throw new \Exception('invalid ping signature:' . $body . ' ' . $mySig . ' ' . $sig);
+                throw new \Exception('invalid ping signature');
             }
         } else if ($mySig !== $sig) {
             throw new \Exception('invalid ping signature');
