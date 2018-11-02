@@ -269,7 +269,7 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
             }
             $localSeq = $resobj['seq'];
         }
-        $this->sendJSON([], 200);
+        $this->sendJSON(['success' => true], 200);
     }
 
     protected function is_assoc(array $array){
