@@ -16,7 +16,7 @@ class ModelExtensionPaymentScanpay extends Model {
         foreach ($arr as $v) {
             if (!is_int($v)) { throw new \Exception('value is not an int'); }
         }
-    }    
+    }
 
     public function loadSeq($shopid) {
         $this->requireInts([ $shopid ]);
@@ -27,12 +27,14 @@ class ModelExtensionPaymentScanpay extends Model {
 
     public function updateSeqMtime($shopid) {
         $this->requireInts([ $shopid ]);
-        $this->db->query("UPDATE `" . DB_PREFIX . "scanpay_seq` SET `mtime` = " . time() . " WHERE `shopid` = " . $shopid);
+        $this->db->query('INSERT INTO `' . DB_PREFIX . 'scanpay_seq` (shopid, seq, mtime)
+            VALUES (' . $shopid . ', 0, ' . time() . ') ON DUPLICATE KEY UPDATE
+            mtime = ' . time());
     }
 
     public function saveSeq($shopid, $seq) {
         $this->requireInts([ $shopid, $seq ]);
-        $this->db->query('INSERT INTO `' . DB_PREFIX . 'scanpay_seq` (shopid, seq, mtime) 
+        $this->db->query('INSERT INTO `' . DB_PREFIX . 'scanpay_seq` (shopid, seq, mtime)
             VALUES (' . $shopid . ', ' . $seq . ', ' . time() . ') ON DUPLICATE KEY UPDATE
             shopid = IF(seq < VALUES(seq), VALUES(shopid), shopid),
             mtime = IF(seq < VALUES(seq), VALUES(mtime), mtime),
