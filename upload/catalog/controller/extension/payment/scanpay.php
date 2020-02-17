@@ -4,11 +4,8 @@ require_once('abstract-scanpay.php');
 
 class ControllerExtensionPaymentScanpay extends AbstractControllerExtensionPaymentScanpay {
 
-    public function index() {
-        return $this->_index();
+    protected function getName() {
+        return 'scanpay';
     }
 
-    public function pay() {
-        $this->mkpayment();
-    }
 }

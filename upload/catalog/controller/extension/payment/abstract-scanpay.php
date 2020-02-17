@@ -6,18 +6,18 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
     const ORDER_STATUS_REFUNDED = 11;
     const ORDER_STATUS_VOIDED = 16;
 
+    abstract protected function getName();
 
-    public function _index($paymethod = '') {
-        $suffix = ($paymethod) ? ('_' . $paymethod) : '';
-        $this->language->load('extension/payment/scanpay' . $suffix);
+    public function index() {
+        $this->language->load('extension/payment/' . $this->getName());
         $this->load->model('checkout/order');
         $order_info = $this->model_checkout_order->getOrder($this->session->data['order_id']);
         $data['button_confirm'] = $this->language->get('button_confirm');
-        $data['action'] = $this->url->link('extension/payment/scanpay' . $suffix . '/pay', '', true);
-        return $this->load->view('extension/payment/scanpay' . $suffix, $data);
+        $data['action'] = $this->url->link('extension/payment/' . $this->getName() . '/pay', '', true);
+        return $this->load->view('extension/payment/' . $this->getName(), $data);
     }
 
-    protected function mkpayment($paymethod='') {
+    public function pay() {
         $this->load->model('checkout/order');
         $this->load->library('scanpay');
 
@@ -127,7 +127,7 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
         try {
             $opts = [
                 'headers' => [
-                    'X-Shop-Plugin' => 'opencart/' . SCANPAY_VERSION,
+                    'X-Shop-Plugin' => 'opencart/' . VERSION . '/' . SCANPAY_VERSION,
                     'X-Cardholder-IP:' => $order['ip'],
                 ]
             ];
@@ -138,7 +138,9 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
         }
 
         $this->model_checkout_order->addOrderHistory($orderid, self::ORDER_STATUS_PENDING);
-        if ($paymethod != '') { $payurl .= '?go=' . $paymethod; }
+        if ($this->getName() !== 'scanpay') {
+            $payurl .= '?go=' . preg_replace('/^scanpay_/', '', $this->getName());
+        }
         $this->response->redirect($payurl, 302);
     }
 
@@ -366,9 +368,11 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
     }
 
     public function captureOnOrderStatus($_route, $data) {
-        $this->log->write('capture');
         $orderid = (int)$data[0];
         $order = $this->model_checkout_order->getOrder($orderid);
+        if ($order['payment_code'] != $this->getName()) {
+            return;
+        }
         if ($order === false) {
             $this->log->write("Orderid $orderid is not in system");
             return;
@@ -394,6 +398,9 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
             'total' => round($order['total'], 2) . ' ' . $order['currency_code'],
             'index' => $spData['nacts'],
         ];
+        if (empty($spData['trnid'])) {
+            $this->log->write('capture failed: order is pending payment');
+        }
         try {
             $client->capture($spData['trnid'], $captureData);
         } catch (\Exception $e) {

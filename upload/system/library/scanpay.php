@@ -1,5 +1,5 @@
 <?php
-define('SCANPAY_VERSION', '0.32');
+define('SCANPAY_VERSION', '1.0.0');
 
 require_once(DIR_SYSTEM . 'library/php-scanpay/lib/Scanpay.php');
 
