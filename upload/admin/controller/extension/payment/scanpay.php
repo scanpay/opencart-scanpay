@@ -4,8 +4,13 @@ require_once('abstract-scanpay.php');
 
 class ControllerExtensionPaymentScanpay extends AbstractControllerExtensionPaymentScanpay {
 
+    protected function getName() {
+        return 'scanpay';
+    }
+
     public function index() {
         $this->load->model('extension/payment/scanpay');
+        $this->document->addScript('view/javascript/scanpay.js');
         $data['pingurl'] = HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping';
         $shopIdStr = explode(':', $this->config->get('payment_scanpay_apikey'))[0];
         if (ctype_digit($shopIdStr) && (string)(int)$shopIdStr == $shopIdStr) {
@@ -17,10 +22,12 @@ class ControllerExtensionPaymentScanpay extends AbstractControllerExtensionPayme
         $data['pingdt'] = $this->fmtdt(time() - $mtime);
         $data['pingstatus'] = $this->pingstatus($mtime);
 
-        $this->_index('', ['payment_scanpay_status', 'payment_scanpay_language', 'payment_scanpay_apikey', 'payment_scanpay_autocapture', 'payment_scanpay_sort_order'], $data);
+        $this->_index('', ['payment_scanpay_status', 'payment_scanpay_language', 'payment_scanpay_apikey',
+                           'payment_scanpay_captureonorderstatus', 'payment_scanpay_autocapture', 'payment_scanpay_sort_order'], $data);
     }
 
     public function install() {
+        parent::install();
         $this->load->model('extension/payment/scanpay');
         $this->model_extension_payment_scanpay->install();
     }

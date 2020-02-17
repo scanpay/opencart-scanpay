@@ -365,5 +365,41 @@ abstract class AbstractControllerExtensionPaymentScanpay extends Controller {
         return true;
     }
 
+    public function captureOnOrderStatus($_route, $data) {
+        $this->log->write('capture');
+        $orderid = (int)$data[0];
+        $order = $this->model_checkout_order->getOrder($orderid);
+        if ($order === false) {
+            $this->log->write("Orderid $orderid is not in system");
+            return;
+        }
+        $statuses = $this->config->get('payment_scanpay_captureonorderstatus');
+        if (empty($statuses)) {
+            return;
+        }
+        $statuses = explode(',', $statuses);
+        $doCapture = false;
+        foreach ($statuses as $status) {
+            if ((int)$order['order_status_id'] === (int)$status) {
+                $doCapture = true;
+                break;
+            }
+        }
+        $apikey = $this->config->get('payment_scanpay_apikey');
+        $this->load->model('extension/payment/scanpay');
+        $this->load->library('scanpay');
+        $client = new Scanpay\Scanpay($apikey);
+        $spData = $this->model_extension_payment_scanpay->getOrder($orderid);
+        $captureData = [
+            'total' => round($order['total'], 2) . ' ' . $order['currency_code'],
+            'index' => $spData['nacts'],
+        ];
+        try {
+            $client->capture($spData['trnid'], $captureData);
+        } catch (\Exception $e) {
+            $this->log->write('capture failed: ' . $e->getMessage());
+            return;
+        }
+    }
 
 }
