@@ -1,6 +1,6 @@
 <?php
 
-abstract class ControllerExtensionPaymentScanpay extends Controller {
+class ControllerExtensionPaymentScanpay extends Controller {
     private const ORDER_STATUS_PENDING = 1;
     private const ORDER_STATUS_PROCESSING = 2;
     private const ORDER_STATUS_REFUNDED = 11;
@@ -230,57 +230,6 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
     protected function sendJSON(array $ent, int $code) {
         http_response_code($code);
         $this->response->setOutput(json_encode($ent));
-    }
-
-    public function ping() {
-        $this->load->model('checkout/order');
-        $this->load->library('scanpay');
-        $this->load->model('extension/payment/scanpay');
-
-        $client = new Scanpay\Scanpay($this->config->get('payment_scanpay_apikey'));
-        try {
-            $pingobj = $client->handlePing();
-            $shopid = $pingobj['shopid'];
-            $remoteSeq = $pingobj['seq'];
-        } catch (\Exception $e) {
-            $this->sendJSON(['error' => $e->getMessage()], 403);
-            return;
-        }
-
-        $localSeqObj = $this->model_extension_payment_scanpay->loadSeq($shopid);
-        $localSeq = $localSeqObj['seq'];
-        if ($localSeq === $remoteSeq) {
-            $this->model_extension_payment_scanpay->updateSeqMtime($shopid);
-        }
-
-        while ($localSeq < $remoteSeq) {
-            try {
-                $opts = [
-                    'headers' => [
-                        'X-Shop-Plugin' => 'opencart/' . SCANPAY_VERSION,
-                    ]
-                ];
-                $resobj = $client->seq($localSeq, $opts);
-            } catch (\Exception $e) {
-                $this->log->write('scanpay client exception: ' . $e->getMessage());
-                $this->sendJSON(['error' => 'scanpay client exception: ' . $e->getMessage()], 500);
-                return;
-            }
-            foreach ($resobj['changes'] as $change) {
-                if (!$this->updateOrder($shopid, $change)) {
-                    return;
-                }
-            }
-            if (!$this->model_extension_payment_scanpay->saveSeq($shopid, $resobj['seq'])) {
-                if ($resobj['seq'] !== $localSeq) {
-                    $this->sendJSON(['error' => 'error saving Scanpay changes'], 500);
-                    return;
-                }
-                break;
-            }
-            $localSeq = $resobj['seq'];
-        }
-        $this->sendJSON(['success' => true], 200);
     }
 
     protected function isAssoc(array $array){
