@@ -1,13 +1,15 @@
 <?php
+
+// phpcs:disable Generic.Files.LineLength
 $_['heading_title'] = 'Scanpay';
- 
+
 $_['text_status'] = 'Status';
 $_['text_enabled'] = 'Enabled';
 $_['text_disabled'] = 'Disabled';
 
 $_['entry_status'] = 'Status:';
 $_['entry_order_status'] = 'Order Status:';
- 
+
 $_['text_button_save'] = 'Save';
 $_['text_button_cancel'] = 'Cancel';
 $_['text_edit'] = 'Edit Scanpay';
@@ -25,4 +27,3 @@ $_['help_pingurl'] = 'Copy this URL to the Scanpay dashboard API settings automa
 $_['text_autocapture'] = 'Auto-Capture';
 $_['help_autocapture'] = 'Automatically capture transactions upon authorization. <i><b>Only enable this if you sell services or immaterial goods.</b></i>';
 $_['text_sort_order'] = 'Sort Order';
-?>

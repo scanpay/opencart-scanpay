@@ -1,6 +1,8 @@
 <?php
 namespace Scanpay;
 
+// phpcs:ignoreFile
+
 class IdempotentResponseException extends \Exception {}
 
 class Scanpay {
