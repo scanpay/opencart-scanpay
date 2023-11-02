@@ -38,7 +38,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
             'billing'     => array_filter([
                 'name'    => $order['payment_firstname'] . ' ' . $order['payment_lastname'],
                 'email'   => $order['email'],
-                'phone'   => preg_replace('/\s+/', '', $order['telephone']),
+                'phone'   => preg_replace('/\s+/', '', (string)$order['telephone']),
                 'address' => array_filter([ $order['payment_address_1'], $order['payment_address_2']]),
                 'city'    => $order['payment_city'],
                 'zip'     => $order['payment_postcode'],
@@ -141,7 +141,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
 
         $this->model_checkout_order->addOrderHistory($orderid, self::ORDER_STATUS_PENDING);
         if ($this->getName() !== 'scanpay') {
-            $payurl .= '?go=' . preg_replace('/^scanpay_/', '', $this->getName());
+            $payurl .= '?go=' . preg_replace('/^scanpay_/', '', (string)$this->getName());
         }
         $this->response->redirect($payurl, 302);
     }
