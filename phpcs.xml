@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<ruleset name="PHP-SDK">
+    <description>PSR-12 coding standard.</description>
+    <rule ref="PSR12">
+		<!-- prevent Class brace on new line -->
+		<exclude name="PSR2.Classes.ClassDeclaration.OpenBraceNewLine"/>
+		<!-- prevent function brace on new line -->
+		<exclude name="Squiz.Functions.MultiLineFunctionDeclaration.BraceOnSameLine" />
+    </rule>
+
+   <!-- Test the spacing of inline control statements -->
+    <rule ref="Squiz.ControlStructures.InlineIfDeclaration" />
+
+    <!-- Check to ensure no PHP deprecated functions have been used -->
+    <rule ref="Generic.PHP.DeprecatedFunctions">
+        <severity>5</severity>
+        <type>error</type>
+    </rule>
+
+    <!-- PHP opening tag must be full <?php, no shorthand or ASP tags -->
+    <rule ref="Generic.PHP.DisallowShortOpenTag">
+        <severity>5</severity>
+        <type>error</type>
+    </rule>
+
+    <!-- In PHP files make sure there is no character before the opening tag -->
+    <rule ref="Generic.PHP.CharacterBeforePHPOpeningTag"/>
+
+    <!-- Type casting should be immediately followed by the variable, no space -->
+    <rule ref="Generic.Formatting.NoSpaceAfterCast" />
+
+    <!-- Use CamelCase -->
+    <rule ref="Generic.NamingConventions.CamelCapsFunctionName"/>
+    <rule ref="Generic.NamingConventions.UpperCaseConstantName"/>
+
+    <!-- Exclude paths -->
+    <exclude-pattern>.vendor/</exclude-pattern>
+    <exclude-pattern>*.js</exclude-pattern>
+    <exclude-pattern>*.css</exclude-pattern>
+</ruleset>
