@@ -56,7 +56,7 @@ class ControllerExtensionPaymentScanpayMobilepay extends Controller {
         $this->response->setOutput($this->load->view('extension/payment/scanpay' . $suffix, $data));
     }
 
-    protected function fillconfigdata($data, $arr) {
+    protected function fillconfigdata(array $data, array $arr) {
         foreach ($arr as $v) {
             if (isset($this->request->post[$v])) {
                 $data[$v] = $this->request->post[$v];

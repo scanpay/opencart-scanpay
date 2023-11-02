@@ -57,8 +57,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->response->setOutput($this->load->view('extension/payment/scanpay', $data));
     }
 
-    protected function fmtdt($dt)
-    {
+    protected function fmtdt(int $dt) {
         $minute = 60;
         $hour = $minute * 60;
         $day = $hour * 24;
@@ -81,7 +80,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
     }
 
-    protected function pingstatus($mtime) {
+    protected function pingstatus(int $mtime) {
         $t = time();
         if ($mtime > $t) {
             $this->log->write('last modified time is in the future');
@@ -108,7 +107,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         return !$this->error;
     }
 
-    protected function fillconfigdata($data, $arr) {
+    protected function fillconfigdata(array $data, array $arr) {
         foreach ($arr as $v) {
             if (isset($this->request->post[$v])) {
                 $data[$v] = $this->request->post[$v];

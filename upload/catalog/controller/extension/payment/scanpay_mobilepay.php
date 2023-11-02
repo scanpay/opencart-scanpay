@@ -28,7 +28,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
 
         $products = $this->model_checkout_order->getOrderProducts($orderid);
         $totals = $this->model_checkout_order->getOrderTotals($orderid);
-        $apikey = $this->config->get('payment_scanpay_apikey');
+        $apikey = (string)$this->config->get('payment_scanpay_apikey');
 
         $data = [
             'orderid'     => $orderid,
@@ -146,7 +146,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
         $this->response->redirect($payurl, 302);
     }
 
-    protected function distributeamount($items, $amount) {
+    protected function distributeamount(array $items, string $amount) {
         /* Copy items into $ret */
         $ret = $items;
         $itemtotals = array_fill(0, count($items), 0);
@@ -165,7 +165,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
         return $ret;
     }
 
-    protected function getdiscounts($items) {
+    protected function getdiscounts(array $items) {
         /* Create discounts array ( +1 field for shipping) */
         $discounts = array_fill(0, count($items), 0);
         if (!isset($this->session->data['coupon'])) {
@@ -227,7 +227,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
      * Ping/seq related functions
      */
     // phpcs:ignore
-    protected function sendJSON($ent, $code) {
+    protected function sendJSON(array $ent, int $code) {
         http_response_code($code);
         $this->response->setOutput(json_encode($ent));
     }
@@ -292,11 +292,11 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
         return array_keys($keys) !== $keys;
     }
 
-    protected function isMoney($str) {
+    protected function isMoney(string $str) {
         return preg_match('/^\d+\.*\d*\ [A-Z]{3}$/', $str) === 1;
     }
 
-    protected function orderIsValid($data) {
+    protected function orderIsValid(array $data) {
         return isset($data['id']) && is_int($data['id']) &&
             isset($data['totals']) && is_array($data['totals']) &&
             isset($data['totals']['authorized']) && $this->isMoney($data['totals']['authorized']) &&
@@ -306,8 +306,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
             isset($data['rev']) && is_int($data['rev']);
     }
 
-    protected function updateOrder($shopid, $data) {
-
+    protected function updateOrder(int $shopid, array $data) {
         /* Ignore errornous transactions */
         if (isset($data['error'])) {
             $this->log->write('Received error entry in order update: ' . $data['error']);
@@ -376,7 +375,7 @@ abstract class ControllerExtensionPaymentScanpay extends Controller {
         return true;
     }
 
-    public function captureOnOrderStatus($_route, $data) {
+    public function captureOnOrderStatus($_route, array $data) {
         $orderid = (int)$data[0];
         $order = $this->model_checkout_order->getOrder($orderid);
         if ($order['payment_code'] != $this->getName()) {

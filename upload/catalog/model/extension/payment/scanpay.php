@@ -51,11 +51,11 @@ class ModelExtensionPaymentScanpay extends Model {
         return $res->rows[0];
     }
 
-    public function num($moneystr) {
+    public function num(string $moneystr) {
         return (int)explode(' ', $moneystr)[0];
     }
 
-    public function setOrder($shopid, $data) {
+    public function setOrder(int $shopid, array $data) {
         $q = 'INSERT INTO `' . DB_PREFIX . 'scanpay_order` ' .
             '(orderid, shopid, trnid, rev, nacts, authorized, captured, refunded)
             VALUES (
