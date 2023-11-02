@@ -9,7 +9,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->load->model('extension/payment/scanpay');
         $this->document->addScript('view/javascript/scanpay.js');
         $data['pingurl'] = HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping';
-        $shopIdStr = explode(':', $this->config->get('payment_scanpay_apikey'))[0];
+        $apikey = (string)$this->config->get('payment_scanpay_apikey');
+        $shopIdStr = explode(':', $apikey)[0];
+
         if (ctype_digit($shopIdStr) && (string)(int)$shopIdStr == $shopIdStr) {
             $seqObj = $this->model_extension_payment_scanpay->loadSeq((int)$shopIdStr);
             $mtime = $seqObj['mtime'];
