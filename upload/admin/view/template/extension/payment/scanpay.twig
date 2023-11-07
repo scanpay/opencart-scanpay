@@ -1,6 +1,7 @@
 {{ header }}{{ column_left }}
 <div id="content">
-  <style>
+
+<style>
   .scanpay--pingurl--status > div {
       display: none;
       position: relative;
@@ -41,121 +42,28 @@
       font-size: 15px !important;
       padding: 0 !important;
   }
-
-  #scanpay--captureonorderstatus {
-      display: flex;
-      align-items: center;
-  }
-  .scanpay--hide {
-      display: none !important;
-  }
-  #scanpay--captureonorderstatus--add {
-      display: inline-flex;
-      flex-shrink: 0;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      border: 1px solid #279cbb;
-      border-radius: 50%;
-      padding: 0;
-      margin-bottom: 5px;
-      margin-right: 5px;
-      width: 34px;
-      height: 34px;
-      background-color: #2eacce;
-      font-size: 20px;
-      font-weight: 200;
-      color: white;
-      cursor: pointer;
-      user-select: none;
-  }
-  #scanpay--captureonorderstatus--list {
-      display: inline-flex;
-      flex-wrap: wrap;
-      list-style-type: none;
-      padding: 0;
-      margin: 0;
-      user-select: none;
-  }
-  #scanpay--captureonorderstatus--list > li {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      margin-right: 5px;
-      margin-bottom: 5px;
-      padding: 5px 0;
-      padding-left: 10px;
-      border: 1px solid #279cbb;
-      border-radius: 3px;
-      background-color: #2eacce;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 400;
-  }
-  #scanpay--captureonorderstatus--list > li span {
-      cursor: pointer;
-      padding: 5px 10px;
-      font-size: 20px;
-      line-height: 12px;
-  }
-  #scanpay--captureonorderstatus--list > li span:hover {
-      background-color: #80cee2;
-  }
-  #scanpay--captureonorderstatus--dropdown {
-      display: flex;
-      flex-direction: column;
-      list-style-type: none;
-      visibility: hidden;
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      padding: 0;
-      margin: 0;
-      font-size: 12px;
-      color: black;
-      z-index: 999;
-      padding: 1px 1px 0 1px;
-      width: 300px;
-      background: #999;
-      overflow: auto;
-      max-height: 300px;
-      cursor: auto;
-  }
-  #scanpay--captureonorderstatus--dropdown.scanpay--show {
-      visibility: visible;
-  }
-  #scanpay--captureonorderstatus--dropdown li {
-      background: white;
-      border-bottom: black;
-      margin-bottom: 1px;
-      padding: 8px;
-  }
-  #scanpay--captureonorderstatus--dropdown li.scanpay--usedstatus {
-      background-color: #ccc;
-  }
-  #scanpay--captureonorderstatus--dropdown li.scanpay--usedstatus::after {
-      content: '\2713';
-      padding-left: 5px;
-  }
-  #scanpay--captureonorderstatus--dropdown li:hover {
-      background-color: #2eacce;
-      cursor: pointer;
-  }
-  #scanpay--captureonorderstatus--dropdown li.scanpay--usedstatus:hover {
-      cursor: auto;
-      background-color: #ccc;
-  }
-
   </style>
+
   <div class="page-header">
     <div class="container-fluid">
       <div class="pull-right">
-        <button type="submit" form="form-payment" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
-        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+        <button type="submit" form="form-payment" 
+          data-toggle="tooltip" 
+          title="{{ button_save }}" 
+          class="btn btn-primary">
+            <i class="fa fa-save"></i>
+        </button>
+        <a href="{{ cancel }}" 
+          data-toggle="tooltip" 
+          title="{{ button_cancel }}" 
+          class="btn btn-default">
+            <i class="fa fa-reply"></i>
+        </a>
       </div>
       <h1>{{ heading_title }}</h1>
     </div>
   </div>
+
   <div class="container-fluid">
     <div class="panel panel-default">
       <div class="panel-heading">
@@ -221,34 +129,39 @@
                   </div>
                 </div>
               </div>
-              <input type="text" value="{{ pingurl }}" class="form-control" onfocus="this.select();" style="cursor: pointer; background: white; color: #303030; opacity: 1" readonly>
+              <input type="text" value="{{ pingurl }}" class="form-control" onfocus="this.select();" readonly>
             </div>
           </div>
 
           <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-autocapture"><span data-toggle="tooltip" title="{{ help_autocapture }}">{{ text_autocapture }}</span></label>
+            <label class="col-sm-2 control-label" for="input-captureonorderstatus">
+              <span data-toggle="tooltip" title="Automatically capture the payment when the order status is changed.">
+                Auto-Capture
+              </span>
+            </label>
+
             <div class="col-sm-10">
-              <select name="payment_scanpay_autocapture" id="input-autocapture" class="form-control">
-                <option value="0" {% if payment_scanpay_autocapture == '0' %}selected{% endif %}>{{ text_disabled }}</option>
-                <option value="1" {% if payment_scanpay_autocapture == '1' %}selected{% endif %}>{{ text_enabled }}</option>
+              <select name="payment_scanpay_auto_capture" id="captureonorderstatus" class="form-control">
+                <option value="off" {% if payment_scanpay_auto_capture == 'off' %}selected{% endif %}>
+                  {{ text_disabled }}
+                </option>
+                <option value="5" {% if payment_scanpay_auto_capture == '5' %}selected{% endif %}>
+                  Capture when order status changes to 'Complete'
+                </option>
+                <option value="3" {% if payment_scanpay_auto_capture == '3' %}selected{% endif %}>
+                  Capture when order status changes to 'Shipped'
+                </option>
+                <option value="2" {% if payment_scanpay_auto_capture == '2' %}selected{% endif %}>
+                  Capture when order status changes to 'Processing'
+                </option>
               </select>
             </div>
           </div>
 
           <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-captureonorderstatus"><span data-toggle="tooltip" title="{{ help_autocapture }}">{{ text_autocapture }}</span></label>
-            <input type="hidden" name="payment_scanpay_captureonorderstatus" value="{{ payment_scanpay_captureonorderstatus }}" id="scanpay--captureonorderstatus--input" class="form-control">
-            <div id="scanpay--captureonorderstatus">
-              <div id="scanpay--captureonorderstatus--add">+<ul id="scanpay--captureonorderstatus--dropdown">
-                {% for status in order_statuses %}
-                  <li data-id="{{ status.order_status_id }}">{{ status.name }}</li>
-                {% endfor %}
-              </ul></div>
-              <ul id="scanpay--captureonorderstatus--list"></ul>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-language"><span data-toggle="tooltip" title="{{ help_language }}">{{ text_language }}</span></label>
+            <label class="col-sm-2 control-label" for="input-language">
+              <span data-toggle="tooltip" title="{{ help_language }}">{{ text_language }}</span>
+            </label>
             <div class="col-sm-10">
               <select name="payment_scanpay_language" id="input-language" class="form-control">
                 <option value="" {% if payment_scanpay_language == '' %}selected{% endif %}>{{ text_lang_auto }}</option>
@@ -260,15 +173,16 @@
               {% endif %}
             </div>
           </div>
+
           <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-sort-order">{{ text_sort_order }}</label>
+            <label class="col-sm-2 control-label" for="input-sort-order">
+              <span data-toggle="tooltip" title="The priority in the payment method list, where 0 is the highest priority.">{{ text_sort_order }}</span>
+            </label>
             <div class="col-sm-10">
               <input type="text" name="payment_scanpay_sort_order" value="{{ payment_scanpay_sort_order }}" placeholder="{{ entry_sort_order }}" id="input-sort-order" class="form-control" />
             </div>
           </div>
-
         </form>
-
       </div>
     </div>
   </div>

@@ -1,59 +1,45 @@
 <?php
 
 class ControllerExtensionPaymentScanpay extends Controller {
-    protected function getName() {
-        return 'scanpay';
-    }
-
     public function index() {
+        $this->language->load('extension/payment/scanpay');
+        $this->document->setTitle($this->language->get('heading_title'));
+        $this->load->model('setting/setting');
         $this->load->model('extension/payment/scanpay');
-        $this->document->addScript('view/javascript/scanpay.js');
-        $data['pingurl'] = HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping';
+
+        if ($this->request->server['REQUEST_METHOD'] === 'POST') {
+            if ($this->user->hasPermission('modify', 'extension/payment/scanpay')) {
+                $this->model_setting_setting->editSetting('payment_scanpay', $this->request->post);
+            } else {
+                $this->error['warning'] = $this->language->get('error_permission');
+            }
+        }
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopIdStr = explode(':', $apikey)[0];
 
         if (ctype_digit($shopIdStr) && (string)(int)$shopIdStr == $shopIdStr) {
-            $seqObj = $this->model_extension_payment_scanpay->loadSeq((int)$shopIdStr);
+            $seqObj = $this->model_extension_payment_scanpay->getSeq((int)$shopIdStr);
             $mtime = $seqObj['mtime'];
         } else {
             $mtime = 0;
         }
-        $data['pingdt'] = $this->fmtdt(time() - $mtime);
-        $data['pingstatus'] = $this->pingstatus($mtime);
-        $configfields = ['payment_scanpay_status', 'payment_scanpay_language', 'payment_scanpay_apikey',
-            'payment_scanpay_captureonorderstatus', 'payment_scanpay_autocapture', 'payment_scanpay_sort_order'];
 
-        $this->language->load('extension/payment/scanpay');
-        $this->document->setTitle($this->language->get('heading_title'));
-        $this->load->model('setting/setting');
-        if (($this->request->server['REQUEST_METHOD'] === 'POST') && $this->validate()) {
-            $this->model_setting_setting->editSetting('payment_scanpay', $this->request->post);
-            $this->session->data['success'] = $this->language->get('text_success');
-            $this->response->redirect($this->url->link(
-                'marketplace/extension',
-                'user_token=' . $this->session->data['user_token']  . '&type=payment',
-                true
-            ));
+        $token = $this->session->data['user_token'];
+        $data = [
+            'header' => $this->load->controller('common/header'),
+            'column_left' => $this->load->controller('common/column_left'),
+            'footer' => $this->load->controller('common/footer'),
+            'pingurl' => HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping',
+            'pingdt' => $this->fmtdt(time() - $mtime),
+            'pingstatus' => $this->pingstatus($mtime),
+            'action' => $this->url->link('extension/payment/scanpay', "user_token=$token", true),
+            'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment", true),
+        ];
+        $settings = ['status', 'language', 'apikey', 'auto_capture', 'sort_order'];
+        foreach ($settings as $x) {
+            $key = 'payment_scanpay_' . $x;
+            $data[$key] = $this->request->post[$key] ?? $this->config->get($key);
         }
-        $data['action'] = $this->url->link(
-            'extension/payment/scanpay',
-            'user_token=' . $this->session->data['user_token'],
-            true
-        );
-        $data['cancel'] = $this->url->link(
-            'marketplace/extension',
-            'user_token=' . $this->session->data['user_token'] . '&type=payment',
-            true
-        );
-
-        $data = $this->fillconfigdata($data, $configfields);
-        $data['header'] = $this->load->controller('common/header');
-        $data['column_left'] = $this->load->controller('common/column_left');
-        $data['footer'] = $this->load->controller('common/footer');
-
-        $this->load->model('localisation/order_status');
-        $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
-
         $this->response->setOutput($this->load->view('extension/payment/scanpay', $data));
     }
 
@@ -97,42 +83,42 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
     }
 
-    protected function validate() {
-        if (!$this->user->hasPermission('modify', 'extension/payment/scanpay')) {
-            $this->error['warning'] = $this->language->get('error_permission');
-        }
-        if (!$this->request->post['payment_scanpay_apikey']) {
-            $this->error['payment_scanpay_apikey'] = $this->language->get('error_apikey');
-        }
-        return !$this->error;
-    }
-
-    protected function fillconfigdata(array $data, array $arr) {
-        foreach ($arr as $v) {
-            if (isset($this->request->post[$v])) {
-                $data[$v] = $this->request->post[$v];
-            } else {
-                $data[$v] = $this->config->get($v);
+    public function order() {
+		if ($this->config->get('payment_scanpay_status')) {
+            $orderid = $this->request->get['order_id'];
+            $apikey = $this->config->get('payment_scanpay_apikey');
+            $shopid = (int)explode(':', $apikey)[0];
+            $this->load->model('extension/payment/scanpay');
+            $data = $this->model_extension_payment_scanpay->getOrderMeta($orderid, $shopid);
+            $data['user_token'] = $this->session->data['user_token'];
+            if (isset($data['trnid'])) {
+                return $this->load->view('extension/payment/scanpay_order', $data);
             }
         }
-        return $data;
+    }
+
+    public function getPaymentTransaction() {
+        echo 'yay';
     }
 
     public function install() {
         $this->load->model('setting/event');
-        $moduleName = $this->getName();
-        $this->model_setting_event->deleteEventByCode($moduleName);
+        $this->model_setting_event->deleteEventByCode('scanpay');
         $this->model_setting_event->addEvent(
-            $moduleName,
+            'scanpay',
             'catalog/model/checkout/order/addOrderHistory/after',
-            'extension/payment/' . $moduleName . '/captureOnOrderStatus'
+            'extension/payment/scanpay/captureOnOrderStatus'
         );
         $this->load->model('extension/payment/scanpay');
         $this->model_extension_payment_scanpay->install();
     }
 
     public function uninstall() {
+        // Delete old databases (tmpfix)
+        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_seq");
+        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_order");
+
         $this->load->model('setting/event');
-        $this->model_setting_event->deleteEventByCode($this->getName());
+        $this->model_setting_event->deleteEventByCode('scanpay');
     }
 }

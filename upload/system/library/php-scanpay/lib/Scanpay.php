@@ -62,7 +62,7 @@ class Scanpay
         $opts = array_merge($this->opts, $opts);
 
         $curlopts = [
-            CURLOPT_URL => 'https://' . ($opts['hostname'] ?? 'api.scanpay.dev') . $path,
+            CURLOPT_URL => 'https://' . ($opts['hostname'] ?? 'api.scanpay.dk') . $path,
             CURLOPT_HTTPHEADER => array_values($headers),
             CURLOPT_VERBOSE => $opts['debug'] ?? 0,
             CURLOPT_TCP_KEEPALIVE => 1, // TODO: CURLOPT_TCP_KEEPINTVL & CURLOPT_TCP_KEEPIDLE

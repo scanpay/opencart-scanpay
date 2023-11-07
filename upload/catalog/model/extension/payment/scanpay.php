@@ -1,7 +1,7 @@
 <?php
 
 class ModelExtensionPaymentScanpay extends Model {
-    public function getMethod($address, $total) {
+    public function getMethod($address, $total): array {
         $this->language->load('extension/payment/scanpay');
         return [
             'code'       => 'scanpay',
@@ -11,69 +11,87 @@ class ModelExtensionPaymentScanpay extends Model {
         ];
     }
 
-    public function loadSeq(int $shopid) {
+    public function getSeq(int $shopid): array {
         $res = $this->db->query(
-            "SELECT * FROM `" . DB_PREFIX . "scanpay_seq`
-            WHERE `shopid` = " . $shopid . " LIMIT 1"
+            "SELECT * FROM " . DB_PREFIX . "scanpay_seq
+            WHERE shopid = $shopid LIMIT 1"
         );
         if ($res->num_rows === 0) {
-            return [ 'seq' => 0, 'mtime' => 0 ];
+            $this->db->query(
+                "INSERT INTO " . DB_PREFIX . "scanpay_seq
+                (shopid, seq, mtime)
+                VALUES ($shopid, 0, 0)"
+            );
+            return ['seq' => 0, 'mtime' => 0];
         }
-        return [ 'seq' => (int)$res->rows[0]['seq'], 'mtime' => (int)$res->rows[0]['mtime'] ];
+        return [
+            'seq' => (int)$res->rows[0]['seq'],
+            'mtime' => (int)$res->rows[0]['mtime']
+        ];
     }
 
-    public function updateSeqMtime(int $shopid) {
+    public function saveSeq(int $shopid, int $seq): void {
+        $mtime = time();
         $this->db->query(
-            'INSERT INTO `' . DB_PREFIX . 'scanpay_seq` (shopid, seq, mtime)
-            VALUES (' . $shopid . ', 0, ' . time() . ') ON DUPLICATE KEY UPDATE
-            mtime = ' . time()
+            "UPDATE " . DB_PREFIX . "scanpay_seq
+            SET seq = $seq, mtime = $mtime
+            WHERE shopid = $shopid"
         );
     }
 
-    public function saveSeq(int $shopid, int $seq) {
-        $this->db->query(
-            'INSERT INTO `' . DB_PREFIX . 'scanpay_seq` (shopid, seq, mtime)
-            VALUES (' . $shopid . ', ' . $seq . ', ' . time() . ') ON DUPLICATE KEY UPDATE
-            shopid = IF(seq < VALUES(seq), VALUES(shopid), shopid),
-            mtime = IF(seq < VALUES(seq), VALUES(mtime), mtime),
-            seq    = IF(seq < VALUES(seq), VALUES(seq), seq)'
+    public function getOrderMeta(int $orderid, int $shopid): array {
+        $sql = $this->db->query(
+            "SELECT * FROM " . DB_PREFIX . "scanpay_order
+            WHERE orderid = $orderid AND shopid = $shopid LIMIT 1"
         );
-    }
-
-    public function getOrder(int $orderid) {
-        $res = $this->db->query(
-            "SELECT * FROM `" . DB_PREFIX . "scanpay_order`
-            WHERE `orderid` = " . $orderid . " LIMIT 1"
-        );
-        if ($res->num_rows === 0) {
-            return false;
+        if ($sql->num_rows === 0) {
+            return [
+                'shopid' => $shopid,
+                'rev'   => 0,
+                'nacts' => 0,
+            ];
         }
-        return $res->rows[0];
+        $row = $sql->rows[0];
+        return [
+            'orderid' => (int)$row['orderid'],
+            'shopid' => (int)$row['shopid'],
+            'trnid' => (int)$row['trnid'],
+            'rev' => (int)$row['rev'],
+            'nacts' => (int)$row['nacts'],
+            'authorized' => (string)$row['authorized'],
+            'captured' => (string)$row['captured'],
+            'refunded' => (string)$row['refunded'],
+            'voided' => (string)$row['voided'],
+        ];
     }
 
-    public function num(string $moneystr) {
-        return (int)explode(' ', $moneystr)[0];
+    public function updateOrderMeta(int $shopid, array $data): void {
+        $rev = (int)$data['rev'];
+        $nacts = count($data['acts']);
+        $this->db->query(
+            "UPDATE " . DB_PREFIX . "scanpay_order
+            SET rev = '$rev',
+                nacts = '$nacts',
+                authorized = '" . $data['totals']['authorized'] . "',
+                captured = '" . $data['totals']['captured'] . "',
+                refunded = '" . $data['totals']['refunded'] . "',
+                voided = '" . $data['totals']['voided'] . "'
+            WHERE orderid = $data[orderid] AND shopid = $shopid"
+        );
     }
 
-    public function setOrder(int $shopid, array $data) {
-        $q = 'INSERT INTO `' . DB_PREFIX . 'scanpay_order` ' .
-            '(orderid, shopid, trnid, rev, nacts, authorized, captured, refunded)
-            VALUES (
-                ' . (int)$data['orderid'] . ', 
-                ' . (int)$shopid . ' ,
-                ' . (int)$data['id'] . ', 
-                ' . (int)$data['rev'] . ', 
-                ' . count($data['acts']) . ', 
-                ' . (string)$this->num($data['totals']['authorized']) . ', 
-                ' . (string)$this->num($data['totals']['captured']) . ', 
-                ' . (string)$this->num($data['totals']['refunded']) .
-            ') ON DUPLICATE KEY UPDATE
-            nacts      = IF(rev < VALUES(rev), VALUES(nacts), nacts),
-            authorized = IF(rev < VALUES(rev), VALUES(authorized), authorized),
-            captured   = IF(rev < VALUES(rev), VALUES(captured), captured),
-            refunded   = IF(rev < VALUES(rev), VALUES(refunded), refunded),
-            rev        = IF(rev < VALUES(rev), VALUES(rev), rev)';
-        // Update rev last to ensure the previous IFs work
-        $this->db->query($q);
+    public function insertOrderMeta(int $shopid, array $data): void {
+        $this->db->query(
+            "INSERT INTO " . DB_PREFIX . "scanpay_order 
+            SET orderid = '" . (int)$data['orderid'] ."',
+                shopid = '$shopid',
+                trnid = '" . (int)$data['id'] . "',
+                rev = '" . (int)$data['rev'] . "',
+                nacts = '" . count($data['acts']) . "',
+                authorized = '" . $data['totals']['authorized'] . "',
+                captured = '" . $data['totals']['captured'] . "',
+                refunded = '" . $data['totals']['refunded'] . "',
+                voided = '" . $data['totals']['voided'] . "'"
+        );
     }
 }
