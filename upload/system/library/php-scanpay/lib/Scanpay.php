@@ -96,7 +96,7 @@ class Scanpay
 
         $statusCode = (int) curl_getinfo($this->ch, CURLINFO_RESPONSE_CODE);
         if ($statusCode !== 200) {
-            throw new \Exception(('Scanpay returned "' . explode("\n", $result)[0] . '"'));
+            throw new \Exception((explode("\n", $result)[0]));
         }
 
         if (isset($headers['idempotency-key']) && $this->idemstatus !== 'ok') {

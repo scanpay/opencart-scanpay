@@ -1,6 +1,10 @@
 <?php
 
 class ModelExtensionPaymentScanpay extends Model {
+    /*
+        getMethod() used in checkout to show payment method
+        index.php?route=checkout/payment_method
+    */
     public function getMethod($address, $total): array {
         $this->language->load('extension/payment/scanpay');
         return [

@@ -1,6 +1,10 @@
 <?php
 
 class ControllerExtensionPaymentScanpay extends Controller {
+    /*
+        index(): only executed on order confirmation page
+        index.php?route=checkout/confirm
+    */
     public function index() {
         $this->language->load('extension/payment/scanpay');
         $this->load->model('checkout/order');
@@ -9,13 +13,17 @@ class ControllerExtensionPaymentScanpay extends Controller {
         return $this->load->view('extension/payment/scanpay', $data);
     }
 
+    /*
+        pay(): button action
+        index.php?route=extension/payment/scanpay/pay
+    */
     public function pay() {
         $this->load->model('checkout/order');
         $this->load->library('scanpay');
 
         $orderid = $this->session->data['order_id'];
         $order = $this->model_checkout_order->getOrder($orderid);
-        $total = trim($this->currency->format($order['total'], $order['currency_code'], '', false));
+        $total = $this->currency->format($order['total'], $order['currency_code'], '', false);
 
         $data = [
             'orderid'     => $orderid,
@@ -55,21 +63,20 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 ['headers' => ['X-Cardholder-IP:' => $order['ip']]]
             );
         } catch (\Exception $e) {
-            $this->log->write('scanpay client exception: ' . $e->getMessage());
-            $this->response->redirect($this->url->link('extension/payment/failure', '', true));
+            $this->language->load('extension/payment/scanpay');
+            $this->log->write('scanpay error: paylink failed => ' . $e->getMessage());
+            $this->session->data['error'] = $this->language->get('error_failed') . '"' . $e->getMessage() . '"';
+		    $this->response->redirect($this->url->link('checkout/checkout', '', true));
         }
 
         $this->model_checkout_order->addOrderHistory($orderid, 1);
-        $this->response->redirect($paylink, 302);
+        $this->response->redirect($paylink, 302); 
     }
 
     public function success() {
         $this->response->redirect($this->url->link('checkout/success'));
     }
 
-    /*
-     * Ping/seq related functions
-     */
     protected function sendJson(array $data, int $code = 200) {
         http_response_code($code);
         $this->response->addHeader('Content-Type: application/json');
