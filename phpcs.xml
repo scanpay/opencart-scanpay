@@ -2,10 +2,11 @@
 <ruleset name="PHP-SDK">
     <description>PSR-12 coding standard.</description>
     <rule ref="PSR12">
-		<!-- prevent Class brace on new line -->
-		<exclude name="PSR2.Classes.ClassDeclaration.OpenBraceNewLine"/>
-		<!-- prevent function brace on new line -->
-		<exclude name="Squiz.Functions.MultiLineFunctionDeclaration.BraceOnSameLine" />
+        <!-- prevent Class brace on new line -->
+        <exclude name="PSR2.Classes.ClassDeclaration.OpenBraceNewLine"/>
+        <!-- prevent function brace on new line -->
+        <exclude name="Squiz.Functions.MultiLineFunctionDeclaration.BraceOnSameLine" />
+        <exclude name="PSR1.Classes.ClassDeclaration.MissingNamespace" />
     </rule>
 
    <!-- Test the spacing of inline control statements -->
@@ -37,4 +38,5 @@
     <exclude-pattern>.vendor/</exclude-pattern>
     <exclude-pattern>*.js</exclude-pattern>
     <exclude-pattern>*.css</exclude-pattern>
+    <exclude-pattern>upload/system/library/scanpay.php</exclude-pattern>
 </ruleset>
