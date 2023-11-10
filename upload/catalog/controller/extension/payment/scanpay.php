@@ -19,8 +19,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
     */
     public function pay() {
         $this->load->model('checkout/order');
-        $this->load->library('scanpay');
-
         $orderid = $this->session->data['order_id'];
         $order = $this->model_checkout_order->getOrder($orderid);
         $total = $this->currency->format($order['total'], $order['currency_code'], '', false);
@@ -56,8 +54,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
         ];
 
         try {
+            require DIR_SYSTEM . 'library/scanpay/client.php';
             $apikey = $this->config->get('payment_scanpay_apikey');
-            $client = new Scanpay\Scanpay($apikey);
+            $client = new ScanpayClient($apikey);
             $paylink = $client->newURL(
                 array_filter($data),
                 ['headers' => ['X-Cardholder-IP:' => $order['ip']]]
@@ -66,11 +65,11 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $this->language->load('extension/payment/scanpay');
             $this->log->write('scanpay error: paylink failed => ' . $e->getMessage());
             $this->session->data['error'] = $this->language->get('error_failed') . '"' . $e->getMessage() . '"';
-		    $this->response->redirect($this->url->link('checkout/checkout', '', true));
+            $this->response->redirect($this->url->link('checkout/checkout', '', true));
         }
 
         $this->model_checkout_order->addOrderHistory($orderid, 1);
-        $this->response->redirect($paylink, 302); 
+        $this->response->redirect($paylink, 302);
     }
 
     public function success() {
@@ -119,17 +118,18 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $this->log->write('Scanpay flock error: ' . $e);
         }
 
-        $this->load->model('extension/payment/scanpay');
-        $db = $this->model_extension_payment_scanpay->getSeq($shopid);
+        require DIR_SYSTEM . 'library/scanpay/client.php';
+        require DIR_SYSTEM . 'library/scanpay/db.php';
+
+        $db = getScanpaySeq($this->db, $shopid);
         if ($ping['seq'] === $db['seq']) {
-            $this->model_extension_payment_scanpay->saveSeq($shopid, $db['seq']);
+            saveScanpaySeq($this->db, $shopid, $db['seq']);
             @rmdir($flock);
             return $this->sendJson(['success' => true], 200); // TODO: use 304
         }
 
         $this->load->model('checkout/order');
-        $this->load->library('scanpay');
-        $client = new Scanpay\Scanpay($apikey);
+        $client = new ScanpayClient($apikey);
         $seq = $db['seq'];
 
         try {
@@ -143,7 +143,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
                         continue;
                     }
                     if (!is_numeric($change['orderid'])) {
-                        $this->log->write('Scanpay warning: #' . $change['orderid'] . 'is an invalid opencart orderID' );
+                        $this->log->write('Scanpay warning: #' . $change['orderid'] . 'is an invalid opencart orderID');
                     }
                     $orderid = (int)$change['orderid'];
                     $order = $this->model_checkout_order->getOrder($orderid);
@@ -151,7 +151,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
                         $this->log->write("scanpay warning: order with #$orderid was not found");
                         continue;
                     }
-                    $meta = $this->model_extension_payment_scanpay->getOrderMeta($orderid, $shopid);
+                    $meta = getScanpayOrder($this->db, $orderid, $shopid);
+
                     if ($meta['rev'] >= $change['rev']) {
                         continue; // old change
                     }
@@ -167,13 +168,13 @@ class ControllerExtensionPaymentScanpay extends Controller {
                         $this->model_checkout_order->addOrderHistory($orderid, 2, $msg, true);
                     }
                     if (isset($meta['trnid'])) {
-                        $this->model_extension_payment_scanpay->updateOrderMeta($shopid, $change);
+                        updateScanpayOrder($this->db, $shopid, $change);
                     } else {
-                        $this->model_extension_payment_scanpay->insertOrderMeta($shopid, $change);
+                        insertScanpayOrder($this->db, $shopid, $change);
                     }
                 }
                 $seq = $res['seq'];
-                $this->model_extension_payment_scanpay->saveSeq($shopid, $seq);
+                saveScanpaySeq($this->db, $shopid, $seq);
             }
             @rmdir($flock);
             return $this->sendJson(['success' => true], 200);
@@ -185,39 +186,39 @@ class ControllerExtensionPaymentScanpay extends Controller {
     }
 
     protected function changeIsValid(array $change): bool {
-		if ($change['type'] !== 'transaction' && $change['type'] !== 'charge' && $change['type'] !=='subscriber') {
+        if ($change['type'] !== 'transaction' && $change['type'] !== 'charge' && $change['type'] !== 'subscriber') {
             $this->log->write('scanpay error: Received unknown seq type: ' . $change['type']);
-			die();
-		}
-		if (isset($change['error'])) {
+            die();
+        }
+        if (isset($change['error'])) {
             $this->log->write("scanpay error: transaction [id=$change[id]] skipped due to error: $change[error]");
-			return false;
-		}
-		if (!isset($change['id']) || !is_int($change['id'])) {
+            return false;
+        }
+        if (!isset($change['id']) || !is_int($change['id'])) {
             $this->log->write("scanpay error: Synchronization failed: missing 'id' in transaction");
-			die();
-		}
-		if (!isset($change['rev'], $change['acts']) || !is_int($change['rev']) || !is_array($change['acts'])) {
+            die();
+        }
+        if (!isset($change['rev'], $change['acts']) || !is_int($change['rev']) || !is_array($change['acts'])) {
             $this->log->write("scanpay error: Synchronization failed: received invalid seq from server");
-			die();
-		}
-		if ($change['type'] === 'subscriber') {
-			if (!isset($change['ref'])) {
+            die();
+        }
+        if ($change['type'] === 'subscriber') {
+            if (!isset($change['ref'])) {
                 $this->log->write('scanpay warning: Received subscriber #' . $change['id'] . ' without ref');
-				return false;
-			}
-		} else {
+                return false;
+            }
+        } else {
             if (empty($change['orderid']) || !is_numeric($change['orderid'])) {
-                $this->log->write('scanpay notice: transaction #' . $change['id'] . ' does not have an opencart orderid');
+                $this->log->write("scanpay notice: transaction #{$change['id']} does not have an opencart orderid");
                 return true;
             }
-			if (!isset($change['totals']['authorized'])) {
+            if (!isset($change['totals']['authorized'])) {
                 $this->log->write('scanpay error: received invalid seq from server');
-				die();
-			}
-		}
-		return true;
-	}
+                die();
+            }
+        }
+        return true;
+    }
 
     public function captureOnOrderStatus($_route, array $data) {
         $orderid = (int)$data[0];
@@ -231,20 +232,20 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $apikey = $this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
 
-        $this->load->model('extension/payment/scanpay');
-        $meta = $this->model_extension_payment_scanpay->getOrderMeta($orderid, $shopid);
+        require DIR_SYSTEM . 'library/scanpay/client.php';
+        require DIR_SYSTEM . 'library/scanpay/db.php';
+        $meta = getScanpayOrder($this->db, $orderid, $shopid);
 
         if (isset($meta['trnid'])) {
             try {
-                $this->load->library('scanpay');
-                $client = new Scanpay\Scanpay($apikey);
+                $client = new ScanpayClient($apikey);
                 $client->capture($meta['trnid'], [
                     'total' => round($order['total'], 2) . ' ' . $order['currency_code'],
                     'index' => $meta['nacts'],
                 ]);
             } catch (\Exception $e) {
                 $this->log->write('Scanpay: auto-capture failed: ' . $e->getMessage());
-            }   
+            }
         }
     }
 }

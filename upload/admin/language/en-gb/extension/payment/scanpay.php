@@ -14,7 +14,7 @@ $_['text_button_save'] = 'Save';
 $_['text_button_cancel'] = 'Cancel';
 $_['text_edit'] = 'Edit Scanpay';
 $_['text_success'] = 'Success: You have successfully modified your Scanpay settings!';
-$_['error_permission']	 = 'Warning: You do not have permission to modify these settings!';
+$_['error_permission'] = 'Warning: You do not have permission to modify these settings!';
 
 $_['text_language'] = 'Language';
 $_['help_language'] = 'Set the payment window language. \'Auto\' allows Scanpay to choose the language based on algorithms.';

@@ -1,14 +1,8 @@
 <?php
 
-namespace Scanpay;
-
 // phpcs:ignoreFile
 
-class IdempotentResponseException extends \Exception
-{
-}
-
-class Scanpay
+class ScanpayClient
 {
     private $ch; // CurlHandle class is added PHP 8.0
     private array $headers;
@@ -26,8 +20,7 @@ class Scanpay
         $this->opts = $opts;
         $this->headers = [
             'authorization' => 'Authorization: Basic ' . base64_encode($this->apikey),
-            'x-sdk' => 'X-SDK: PHP-2.1.1/' . PHP_VERSION,
-            'x-shop-plugin' => 'X-Shop-Plugin: opencart/' . VERSION . '/' . SCANPAY_VERSION,
+            'x-shop-plugin' => 'X-Shop-Plugin: OC-2.0.0/' . VERSION . '; PHP-2.1.1/' . PHP_VERSION,
             'content-type' => 'Content-Type: application/json',
             'expect' => 'Expect: ',
         ];
@@ -62,7 +55,7 @@ class Scanpay
         $opts = array_merge($this->opts, $opts);
 
         $curlopts = [
-            CURLOPT_URL => 'https://' . ($opts['hostname'] ?? 'api.scanpay.dk') . $path,
+            CURLOPT_URL => 'https://' . ($opts['hostname'] ?? 'api.scanpay.dev') . $path,
             CURLOPT_HTTPHEADER => array_values($headers),
             CURLOPT_VERBOSE => $opts['debug'] ?? 0,
             CURLOPT_TCP_KEEPALIVE => 1, // TODO: CURLOPT_TCP_KEEPINTVL & CURLOPT_TCP_KEEPIDLE
@@ -106,7 +99,7 @@ class Scanpay
 
         $json = json_decode($result, true);
         if (!is_array($json)) {
-            throw new IdempotentResponseException('Invalid JSON response from server');
+            throw new \Exception('Invalid JSON response from server');
         }
         return $json;
     }

@@ -9,12 +9,12 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->language->load('extension/payment/scanpay');
         $this->document->setTitle($this->language->get('heading_title'));
         $this->load->model('setting/setting');
-        $this->load->model('extension/payment/scanpay');
+        require DIR_SYSTEM . 'library/scanpay/db.php';
 
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
         if ($shopid > 0) {
-            $mtime = ($this->model_extension_payment_scanpay->getSeq($shopid))['mtime'];
+            $mtime = (getScanpaySeq($this->db, $shopid))['mtime'];
         } else {
             $mtime = 0;
         }
@@ -81,8 +81,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $orderid = $this->request->get['order_id'];
         $apikey = $this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
-        $this->load->model('extension/payment/scanpay');
-        $data = $this->model_extension_payment_scanpay->getOrderMeta($orderid, $shopid);
+        require DIR_SYSTEM . 'library/scanpay/db.php';
+        $data = getScanpayOrder($this->db, $orderid, $shopid);
         $data['user_token'] = $this->session->data['user_token'];
         if (isset($data['trnid'])) {
             return $this->load->view('extension/payment/scanpay_order', $data);
@@ -101,8 +101,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'catalog/model/checkout/order/addOrderHistory/after',
             'extension/payment/scanpay/captureOnOrderStatus'
         );
-        $this->load->model('extension/payment/scanpay');
-        $this->model_extension_payment_scanpay->install();
+        require DIR_SYSTEM . 'library/scanpay/db.php';
+        createScanpayTables($this->db);
     }
 
     public function uninstall() {
