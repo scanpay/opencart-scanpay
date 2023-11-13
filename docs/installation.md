@@ -3,15 +3,17 @@
 1. Download the extension [here](../../../releases). It is an OCMOD zip file.
 2. Open the OpenCart admin area and navigate to `Extensions > Installer`.
 3. Click *"upload"* and upload the zip file.
-4. Navigate to `Extensions > Extensions` and change extension type to *"payments"*.
+4. Navigate to `Extensions > Extensions` and change the extension type to *"payments"*.
 6. Find *"scanpay"* and press *"install"*.
 
 ## Configuration
-Before you begin, you need to generate an API key in our dashboard ([here](https://dashboard.scanpay.dk/settings/api)). Always keep your API key private and secure.
+Before you begin, generate an API key in our dashboard ([link](https://dashboard.scanpay.dk/settings/api)).
 
-1. Enter the admin, navigate to `Extensions > Extensions` and change extension type to *"payments"*.
-2. Find *"scanpay"* and press *"edit"*.
-3. Set status to *"enabled"*.
-4. Insert your API key in the *"API-key"* field.
-5. Copy the contents of the *"Ping URL"* field into the corresponding field in our dashboard ([here](https://dashboard.scanpay.dk/settings/api)). After saving, press the *"Test Ping"* button.
-6. You have completed installing and configuring our OpenCart extension. We recommend performing a test order to ensure everything works as intended.
+1. Open the OpenCart admin area and navigate to `Extensions > Extensions`.
+2. Change the extension type to *"payments"*.
+3. Find *"scanpay"* in the list and click *"edit"*.
+4. Insert your Scanpay API key in the *"API-key"* field and click *"save"*.
+5. Click the *"synchronize"* button to synchronize your store with the Scanpay backend.
+6. Change the status to *"enabled"*.
+
+You have completed installing and configuring our OpenCart extension. We recommend performing a test order to ensure everything works as intended.
