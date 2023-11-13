@@ -55,15 +55,14 @@ class ScanpayClient
         $opts = array_merge($this->opts, $opts);
 
         $curlopts = [
-            CURLOPT_URL => 'https://' . ($opts['hostname'] ?? 'api.scanpay.dev') . $path,
+            CURLOPT_URL => 'https://api.scanpay.dk' . $path,
             CURLOPT_HTTPHEADER => array_values($headers),
-            CURLOPT_VERBOSE => $opts['debug'] ?? 0,
             CURLOPT_TCP_KEEPALIVE => 1, // TODO: CURLOPT_TCP_KEEPINTVL & CURLOPT_TCP_KEEPIDLE
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_CONNECTTIMEOUT => 20,
-            CURLOPT_TIMEOUT => 120,
+            CURLOPT_TIMEOUT => 40,
             CURLOPT_DNS_CACHE_TIMEOUT => 180,
-            //CURLOPT_DNS_SHUFFLE_ADDRESSES => 1,
+            CURLOPT_DNS_SHUFFLE_ADDRESSES => 1,
         ];
         if (isset($data)) {
             $curlopts[CURLOPT_POSTFIELDS] = json_encode($data, JSON_UNESCAPED_SLASHES);
