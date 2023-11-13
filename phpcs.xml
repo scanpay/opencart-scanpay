@@ -35,6 +35,7 @@
     <rule ref="Generic.NamingConventions.UpperCaseConstantName"/>
 
     <!-- Exclude paths -->
+    <exclude-pattern>.ocmod/</exclude-pattern>
     <exclude-pattern>.vendor/</exclude-pattern>
     <exclude-pattern>*.js</exclude-pattern>
     <exclude-pattern>*.css</exclude-pattern>
