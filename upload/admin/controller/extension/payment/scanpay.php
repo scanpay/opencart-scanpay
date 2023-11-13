@@ -19,17 +19,21 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $mtime = 0;
         }
 
+        $catalog = ($this->request->server['HTTPS']) ? HTTPS_CATALOG : HTTP_CATALOG;
         $token = $this->session->data['user_token'];
         $data = [
             'header' => $this->load->controller('common/header'),
             'column_left' => $this->load->controller('common/column_left'),
             'footer' => $this->load->controller('common/footer'),
+            'logsurl' => $this->url->link('tool/log', "user_token=$token"),
             'pingurl' => 'https://dashboard.scanpay.dk/' . $shopid . '/settings/api/setup?module=opencart&url=' .
-                rawurlencode(HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping'),
+                rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping'),
             'dtime' => ($mtime) ? time() - $mtime : 0,
-            'action' => $this->url->link('extension/payment/scanpay', "user_token=$token", true),
-            'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment", true),
+            'pingdate' => date("Y-m-d H:i", $mtime),
+            'action' => $this->url->link('extension/payment/scanpay', "user_token=$token"),
+            'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment"),
         ];
+
         $settings = ['status', 'language', 'apikey', 'auto_capture', 'sort_order'];
         foreach ($settings as $x) {
             $key = 'payment_scanpay_' . $x;

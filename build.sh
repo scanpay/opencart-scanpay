@@ -9,6 +9,7 @@ cp -r "upload/" ".ocmod/upload"
 read -p "Use test environment (api.scanpay.dev)? (y/N): " testing
 if [[ $testing =~ [yY] ]]; then
     sed -i 's/api\.scanpay\.dk/api\.scanpay\.dev/g' ".ocmod/upload/system/library/scanpay/client.php"
+    sed -i 's/dashboard\.scanpay\.dk/dashboard\.scanpay\.dev/g' ".ocmod/upload/admin/controller/extension/payment/scanpay.php"
 fi; echo
 
 cd ".ocmod/"
