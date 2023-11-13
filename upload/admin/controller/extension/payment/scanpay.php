@@ -10,8 +10,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->document->setTitle($this->language->get('heading_title'));
         $this->load->model('setting/setting');
         require DIR_SYSTEM . 'library/scanpay/db.php';
-
-        $apikey = (string)$this->config->get('payment_scanpay_apikey');
+        $apikey = (string)($this->request->post['payment_scanpay_apikey'] ??
+            $this->config->get('payment_scanpay_apikey'));
         $shopid = (int)explode(':', $apikey)[0];
         if ($shopid > 0) {
             $mtime = (getScanpaySeq($this->db, $shopid))['mtime'];
@@ -24,9 +24,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'header' => $this->load->controller('common/header'),
             'column_left' => $this->load->controller('common/column_left'),
             'footer' => $this->load->controller('common/footer'),
-            'pingurl' => HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping',
-            'pingdt' => $this->fmtdt(time() - $mtime),
-            'pingstatus' => $this->pingstatus($mtime),
+            'pingurl' => 'https://dashboard.scanpay.dk/' . $shopid . '/settings/api/setup?module=opencart&url=' .
+                rawurlencode(HTTPS_CATALOG . 'index.php?route=extension/payment/scanpay/ping'),
+            'dtime' => ($mtime) ? time() - $mtime : 0,
             'action' => $this->url->link('extension/payment/scanpay', "user_token=$token", true),
             'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment", true),
         ];
@@ -46,31 +46,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
             }
         }
         $this->response->setOutput($this->load->view('extension/payment/scanpay', $data));
-    }
-
-    protected function fmtdt(int $secs) {
-        if ($secs < 600) {
-            return $secs . ' seconds ago';
-        } elseif ($secs < 7200) {
-            return floor($secs / 60) . ' minutes ago';
-        } elseif ($secs < 172800) {
-            return floor($secs / 3600) . ' hours ago';
-        } else {
-            return floor($secs / 86400) . ' days ago';
-        }
-    }
-
-    protected function pingstatus(int $mtime) {
-        $t = time();
-        if ($t < $mtime + 900) {
-            return 'ok';
-        } elseif ($t < $mtime + 3600) {
-            return 'warning';
-        } elseif ($mtime > $t) {
-            return 'error';
-        } else {
-            return 'never--pinged';
-        }
     }
 
     /*

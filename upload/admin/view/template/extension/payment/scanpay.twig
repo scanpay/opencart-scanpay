@@ -1,63 +1,14 @@
 {{ header }}{{ column_left }}
+
 <div id="content">
-
-<style>
-  .scanpay--pingurl--status > div {
-      display: none;
-      position: relative;
-      margin-bottom: 6px;
-      padding: 10px 10px 10px 26px;
-      text-align: left;
-      font-size: 13px;
-      padding-top: 5px;
-  }
-  .scanpay--pingurl--ok .scanpay--pingurl--ok {
-      display: block;
-      background: #dff0d8;
-      border-left: 5px #3c763d solid;
-  }
-  .scanpay--pingurl--warning .scanpay--pingurl--warning,
-  .scanpay--pingurl--never--pinged .scanpay--pingurl--never--pinged {
-      display: block;
-      background: #fff4cc;
-      border-left: 5px #ffe070 solid;
-  }
-  .scanpay--pingurl--error .scanpay--pingurl--error {
-      display: block;
-      background: #fad7d4;
-      border-left: 5px #f08a81 solid;
-  }
-  .scanpay--pingurl--status h4:before {
-      display: inline-block;
-      position: absolute;
-      content: '\26a0';
-      left: 3px;
-      width: 18px;
-      height: 18px;
-  }
-  .scanpay--pingurl--status .scanpay--pingurl--ok h4:before {
-      content: '\2713';
-  }
-  .scanpay--pingurl--status h4 {
-      font-size: 15px !important;
-      padding: 0 !important;
-  }
-  </style>
-
   <div class="page-header">
     <div class="container-fluid">
       <div class="pull-right">
-        <button type="submit" form="form-payment" 
-          data-toggle="tooltip" 
-          title="{{ button_save }}" 
-          class="btn btn-primary">
-            <i class="fa fa-save"></i>
+        <button type="submit" form="form-payment" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary">
+          <i class="fa fa-save"></i>
         </button>
-        <a href="{{ cancel }}" 
-          data-toggle="tooltip" 
-          title="{{ button_cancel }}" 
-          class="btn btn-default">
-            <i class="fa fa-reply"></i>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default">
+          <i class="fa fa-reply"></i>
         </a>
       </div>
       <h1>{{ heading_title }}</h1>
@@ -66,94 +17,119 @@
 
   <div class="container-fluid">
     {% if error_warning %}
-    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
-      <button type="button" class="close" data-dismiss="alert">&times;</button>
-    </div>
-    {% endif %}
-
-    {% if success_msg %}
-    <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success_msg }}
-      <button type="button" class="close" data-dismiss="alert">&times;</button>
-    </div>
+      <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+      </div>
+    {% elseif success_msg %}
+      <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success_msg }}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+      </div>
     {% endif %}
 
     <div class="panel panel-default">
       <div class="panel-heading">
-        <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+        <h3 class="panel-title">
+          <i class="fa fa-pencil"></i> {{ text_edit }}
+        </h3>
       </div>
-      <div class="panel-body">
 
+      <div class="panel-body">
         <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-payment" class="form-horizontal">
+
+          {# Enable / Disable #}
           <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-language">{{ text_status }}</label>
+            <label class="col-sm-2 control-label" for="input-language">
+              {{ text_status }}
+            </label>
             <div class="col-sm-10">
               <select name="payment_scanpay_status" id="input-status" class="form-control">
                 {% if payment_scanpay_status %}
-                <option value="1" selected="selected">{{ text_enabled }}</option>
-                <option value="0">{{ text_disabled }}</option>
+                  <option value="1" selected="selected">{{ text_enabled }}</option>
+                  <option value="0">{{ text_disabled }}</option>
                 {% else %}
-                <option value="1">{{ text_enabled }}</option>
-                <option value="0" selected="selected">{{ text_disabled }}</option>
+                  <option value="1">{{ text_enabled }}</option>
+                  <option value="0" selected="selected">{{ text_disabled }}</option>
                 {% endif %}
               </select>
             </div>
           </div>
+
+          {# API-key #}
           <div class="form-group required">
-            <label class="col-sm-2 control-label" for="input-apikey">{{ text_apikey }}</label>
+            <label class="col-sm-2 control-label" for="input-apikey">
+              API key
+            </label>
             <div class="col-sm-10">
               <input type="text" name="payment_scanpay_apikey" value="{{ payment_scanpay_apikey }}" id="input-apikey" class="form-control">
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_pingurl }}">{{ text_pingurl }}</span></label>
-            <div class="col-sm-10">
 
-              <div class="scanpay--pingurl pp-buttons-container">
-                <div class="scanpay--pingurl--status scanpay--pingurl--{{ pingstatus }}">
-                  <div class="scanpay--pingurl--ok">
-                    <h4>Ok!</h4>
-                    <div>
-                        Received last ping {{ pingdt }}
-                    </div>
-                  </div>
+              {# Ping URL #}
+              <style>
+                  .scanpay--ping--info {
+                      margin: 6px 0 0;
+                  }
+                  .scanpay--ping--info > b {
+                      color: green;
+                  }
+                  .scanpay--ping--alert {
+                      background: #fff4cc;
+                      border-left: 5px #ffe070 solid;
+                      margin: 12px 0 0 0;
+                      padding: 5px 5px 10px 11px;
+                      text-align: left;
+                      font-size: 13px;
+                  }
+                  .scanpay--ping--alert > div {
+                      display: flex;
+                  }
+                  .scanpay--ping--alert > h4 {
+                      color: #464646;
+                      font-size: 14px;
+                      font-weight: bold;
+                      margin: 7px 0 6px;
+                  }
+                  .scanpay--ping--alert a, .scanpay--ping--info a {
+                      text-decoration: underline;
+                  }
+              </style>
+              {% if payment_scanpay_apikey == '' %}
+                <div class="scanpay--ping--info">
+                  You can find your Scanpay API key <a target="_blank" href="https://dashboard.scanpay.dk/settings/api">here</a>.
+                </div>
+              {% elseif dtime == 0 %}
+                <div class="scanpay--ping--alert">
+                  <h4>Initiate synchronization</h4>
+                  <span>
+                    Your system is not yet synchronized. Please <a target="_blank" href="{{ pingurl }}">click here</a> 
+                    to initiate the synchronization.
+                  </span>
+                </div>
+              {% elseif dtime < 600 %}
+                <div class="scanpay--ping--info">
+                  <b>Synchronized</b>: Last ping received {{ dtime }} seconds ago.
+                </div>
+              {% else %}
+                <div class="scanpay--pingurl pp-buttons-container">
                   <div class="scanpay--pingurl--warning">
                     <h4>Warning!</h4>
                     <div>
-                        Received last ping {{ pingdt }}, please check that the URL above matches the URL set in
-                        <a href="https://dashboard.scanpay.dk/settings/api">Scanpay dashboard</a>
-                    </div>
-                  </div>
-                  <div class="scanpay--pingurl--error">
-                    <h4>Error!</h4>
-                    <div>
-                        Received last ping {{ pingdt }}, please check that the URL above matches the URL set in
-                        <a href="https://dashboard.scanpay.dk/settings/api">Scanpay dashboard</a>
-                        and check your error logs.
-                    </div>
-                  </div>
-                  <div class="scanpay--pingurl--never--pinged">
-                    <h4>Awaiting pings!</h4>
-                    <div>
-                        Never received any pings from Scanpay, please check that the URL above matches the URL set in
-                        <a href="https://dashboard.scanpay.dk/settings/api">Scanpay dashboard</a>
-                        and check your error logs.
+                      Long time since last ping. Please check that the URL below matches the Ping URL in the 
+                      <a href="https://dashboard.scanpay.dk/settings/api">dashboard</a>.
                     </div>
                   </div>
                 </div>
-              </div>
-              <input type="text" value="{{ pingurl }}" class="form-control" onfocus="this.select();" readonly>
+              {% endif %}
             </div>
           </div>
 
+          {# Auto-Capture #}
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-captureonorderstatus">
               <span data-toggle="tooltip" title="Automatically capture the payment when the order status is changed.">
                 Auto-Capture
               </span>
             </label>
-
             <div class="col-sm-10">
-              <select name="payment_scanpay_auto_capture" id="captureonorderstatus" class="form-control">
+              <select name="payment_scanpay_auto_capture" id="input-captureonorderstatus" class="form-control">
                 <option value="off" {% if payment_scanpay_auto_capture == 'off' %}selected{% endif %}>
                   {{ text_disabled }}
                 </option>
@@ -170,6 +146,7 @@
             </div>
           </div>
 
+          {# Language #}
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-language">
               <span data-toggle="tooltip" title="{{ help_language }}">{{ text_language }}</span>
@@ -186,6 +163,7 @@
             </div>
           </div>
 
+          {# Sort Order #}
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-sort-order">
               <span data-toggle="tooltip" title="The priority in the payment method list, where 0 is the highest priority.">{{ text_sort_order }}</span>
@@ -199,4 +177,5 @@
     </div>
   </div>
 </div>
+
 {{ footer }}
