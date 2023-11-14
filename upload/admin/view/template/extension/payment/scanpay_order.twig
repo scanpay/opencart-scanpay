@@ -3,9 +3,7 @@
     <tr>
       <td colspan="2">
         Transaction
-        <a target="_blank" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}">
-            #{{ trnid }}
-        </a>
+        <a target="_blank" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}">#{{ trnid }}</a>
       </td>
     </tr>
   </thead>
@@ -22,21 +20,11 @@
       <td>Refunded</td>
       <td>{{ refunded }}</td>
     </tr>
+    {% if authorized == voided %}
+      <tr>
+        <td>Voided</td>
+        <td>{{ voided }}</td>
+      </tr>
+    {% endif %}
   </tbody>
 </table>
-
-<script>
-  $.ajax({
-      url: 'index.php?route=extension/payment/scanpay/getPaymentTransaction&user_token={{ user_token }}',
-      dataType: 'html',
-      data: {
-          order_id: '{{ order_id }}'
-      },
-      beforeSend: function () {
-          $('#scanpay-info').html('<i class="bambora-online-checkout-loading fa fa-spinner fa-spin fa-5x" style="text-align: center; margin: 0 auto; width: 100%; font-size: 5em;"></i>');
-      },
-      success: function (html) {
-          $('#scanpay-info').html(html);
-      }
-  });
-</script>
