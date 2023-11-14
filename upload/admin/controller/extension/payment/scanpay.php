@@ -7,8 +7,10 @@ class ControllerExtensionPaymentScanpay extends Controller {
     */
     public function index() {
         $this->document->setTitle('Scanpay');
-        $this->document->addStyle('view/stylesheet/scanpay/settings.css');
+        $this->document->addStyle('view/stylesheet/scanpay/settings.css?v6');
+        $this->document->addScript('view/javascript/scanpay/settings.js?v12');
         $this->load->model('setting/setting');
+
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $apikey = (string)($this->request->post['payment_scanpay_apikey'] ??
             $this->config->get('payment_scanpay_apikey'));
@@ -25,19 +27,38 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'header' => $this->load->controller('common/header'),
             'column_left' => $this->load->controller('common/column_left'),
             'footer' => $this->load->controller('common/footer'),
+            'shopid' => $shopid,
             'logsurl' => $this->url->link('tool/log', "user_token=$token"),
             'pingurl' => 'https://dashboard.scanpay.dk/' . $shopid . '/settings/api/setup?module=opencart&url=' .
                 rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping'),
-            'dtime' => ($mtime) ? time() - $mtime : 0,
+            'dtime' => time() - $mtime,
             'pingdate' => date("Y-m-d H:i", $mtime),
             'action' => $this->url->link('extension/payment/scanpay', "user_token=$token"),
             'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment"),
+            'breadcrumbs' => [
+                [
+                    'text' => $this->language->get('text_home'),
+                    'href' => $this->url->link('common/dashboard', "user_token=$token", true)
+                ],
+                [
+                    'text' => $this->language->get('text_extension'),
+                    'href' => $this->url->link('marketplace/extension', "user_token=$token&type=payment", true)
+                ],
+                [
+                    'text' => 'Scanpay',
+                    'href' => $this->url->link('extension/payment/scanpay', "user_token=$token", true)
+                ]
+            ]
         ];
-
         $settings = ['status', 'language', 'apikey', 'auto_capture', 'sort_order'];
         foreach ($settings as $x) {
             $key = 'payment_scanpay_' . $x;
             $data[$key] = $this->request->post[$key] ?? $this->config->get($key);
+        }
+
+        // Validate API key
+        if ($data['payment_scanpay_apikey'] !== '') {
+            $data['invalid_apikey'] = !preg_match("/\d+:\S+/", $data['payment_scanpay_apikey']);
         }
 
         // Handle save button
@@ -66,6 +87,12 @@ class ControllerExtensionPaymentScanpay extends Controller {
         if (isset($data['trnid'])) {
             return $this->load->view('extension/payment/scanpay_order', $data);
         }
+    }
+
+    public function ajaxSeqMtime() {
+        $shopid = (int)$this->request->get['shopid'];
+        require DIR_SYSTEM . 'library/scanpay/db.php';
+        echo (getScanpaySeq($this->db, $shopid))['mtime'];
     }
 
     public function getPaymentTransaction() {

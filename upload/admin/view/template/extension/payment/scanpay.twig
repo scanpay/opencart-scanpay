@@ -12,6 +12,11 @@
         </a>
       </div>
       <h1>Scanpay</h1>
+			<ul class="breadcrumb">
+				{% for breadcrumb in breadcrumbs %}
+				<li><a href="{{ breadcrumb['href'] }}">{{ breadcrumb['text'] }}</a></li>
+				{% endfor %}
+			</ul>
     </div>
   </div>
 
@@ -62,37 +67,41 @@
           </div>
 
           {# API-key #}
-          <div class="form-group required">
+          <div class="form-group required {{ (invalid_apikey) ? 'has-error' : '' }}">
             <label class="col-sm-2 control-label" for="input-apikey">
               API key
             </label>
             <div class="col-sm-10">
-              <input type="text" name="payment_scanpay_apikey" value="{{ payment_scanpay_apikey }}" id="input-apikey" class="form-control">
-              {# Ping URL #}
-              {% if payment_scanpay_apikey == '' %}
+              <input type="text" name="payment_scanpay_apikey" value="{{ payment_scanpay_apikey }}" id="input-apikey" data-shopid="{{ shopid }}" class="form-control">
+              {% if shopid == 0 %}
                 <div class="scanpay--ping--info">
+                  {% if invalid_apikey %}
+                    <span class="scanpay--input--invalid">Invalid API key.</span>
+                  {% endif %}
                   You can find your Scanpay API key <a target="_blank" href="https://dashboard.scanpay.dk/settings/api">here</a>.
                 </div>
-              {% elseif dtime == 0 %}
-                <div class="scanpay--ping--alert">
-                  <h4>Initiate synchronization</h4>
-                  <span>
-                    Your system is not yet synchronized. Please <a target="_blank" href="{{ pingurl }}">click here</a> 
-                    to initiate the synchronization.
-                  </span>
-                </div>
-              {% elseif dtime < 600 %}
-                <div class="scanpay--ping--info">
-                  <b>Synchronized</b>: Last ping received {{ dtime }} seconds ago.
-                </div>
               {% else %}
-                <div class="scanpay--ping--alert">
-                  <h4>Warning: not synchronized</h4>
-                  <span>
-                    The last synchronization was at <time>{{ pingdate }}</time>. Please <a target="_blank" href="{{ pingurl }}">click here</a> 
-                    to perform a synchronization ping.
-                  </span>
+                {# Ping status #}
+                <div class="scanpay--ping--info {{ (dtime > 600) ? 'scanpay-hide' : '' }}">
+                  <b>Synchronized</b>: Last ping received <time id="scanpay--dtime">{{ dtime }}</time> seconds ago.
                 </div>
+                {% if dtime > 31556926 %}
+                  <div class="scanpay--ping--alert">
+                    <h4>Initiate synchronization</h4>
+                    <span>
+                      Your system is not yet synchronized. Please <a target="_blank" href="{{ pingurl }}">click here</a> 
+                      to initiate the synchronization.
+                    </span>
+                  </div>
+                {% elseif dtime > 600 %}
+                  <div class="scanpay--ping--alert">
+                    <h4>Warning: not synchronized</h4>
+                    <span>
+                      The last synchronization was at <time>{{ pingdate }}</time>. Please <a target="_blank" href="{{ pingurl }}">click here</a> 
+                      to perform a synchronization ping.
+                    </span>
+                  </div>
+                {% endif %}
               {% endif %}
             </div>
           </div>

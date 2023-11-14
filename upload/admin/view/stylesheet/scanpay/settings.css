@@ -1,9 +1,13 @@
 .scanpay--admin--nav {
-    margin-bottom: 12px
+    margin-bottom: 14px
 }
 
 .scanpay--admin--nav > .btn {
-    margin-right: 4px;
+    margin-right: 2px;
+}
+
+.scanpay-hide {
+    display: none;
 }
 
 .scanpay--ping--info {
@@ -36,4 +40,9 @@
 
 .scanpay--ping--alert a, .scanpay--ping--info a {
     text-decoration: underline;
+}
+
+.scanpay--input--invalid {
+    color: #e3503e;
+    font-weight: bold;
 }
