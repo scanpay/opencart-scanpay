@@ -6,8 +6,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         admin/index.php?route=extension/payment/scanpay
     */
     public function index() {
-        $this->language->load('extension/payment/scanpay');
-        $this->document->setTitle($this->language->get('heading_title'));
+        $this->document->setTitle('Scanpay');
         $this->load->model('setting/setting');
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $apikey = (string)($this->request->post['payment_scanpay_apikey'] ??
@@ -44,9 +43,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
         if ($this->request->server['REQUEST_METHOD'] === 'POST') {
             if ($this->user->hasPermission('modify', 'extension/payment/scanpay')) {
                 $this->model_setting_setting->editSetting('payment_scanpay', $this->request->post);
-                $data['success_msg'] = $this->language->get('text_success');
+                $data['success_msg'] = 'Success: You have successfully modified your Scanpay settings!';
             } else {
-                $data['error_warning'] = $this->language->get('error_permission');
+                $data['error_warning'] = 'Warning: You do not have permission to modify these settings!';
             }
         }
         $this->response->setOutput($this->load->view('extension/payment/scanpay', $data));

@@ -11,10 +11,10 @@
       }
 
       .scanpay--ping--info {
-          margin: 6px 0 0;
+          margin: 7px 0 0;
       }
       .scanpay--ping--info > b {
-          color: green;
+          color: #066306;
       }
       .scanpay--ping--alert {
           background: #fff4cc;
@@ -37,6 +37,7 @@
           text-decoration: underline;
       }
   </style>
+
   <div class="page-header">
     <div class="container-fluid">
       <div class="pull-right">
@@ -47,7 +48,7 @@
           <i class="fa fa-reply"></i>
         </a>
       </div>
-      <h1>{{ heading_title }}</h1>
+      <h1>Scanpay</h1>
     </div>
   </div>
 
@@ -73,33 +74,26 @@
         </a>
       {% endif %}
       <a class="btn btn-default" target="_blank" href="{{ logsurl }}">
-        Debug logs
+        Logs
       </a>
     </div>
 
     <div class="panel panel-default">
       <div class="panel-heading">
         <h3 class="panel-title">
-          <i class="fa fa-pencil"></i> {{ text_edit }}
+          <i class="fa fa-pencil"></i> Edit
         </h3>
       </div>
       <div class="panel-body">
-        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-payment" class="form-horizontal">
+        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-payment" class="form-horizontal" autocomplete="off" spellcheck="false">
 
           {# Enable / Disable #}
           <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-language">
-              {{ text_status }}
-            </label>
+            <label class="col-sm-2 control-label" for="input-status">Status</label>
             <div class="col-sm-10">
               <select name="payment_scanpay_status" id="input-status" class="form-control">
-                {% if payment_scanpay_status %}
-                  <option value="1" selected="selected">{{ text_enabled }}</option>
-                  <option value="0">{{ text_disabled }}</option>
-                {% else %}
-                  <option value="1">{{ text_enabled }}</option>
-                  <option value="0" selected="selected">{{ text_disabled }}</option>
-                {% endif %}
+                <option value="0">Disabled</option>
+                <option value="1" {{ (payment_scanpay_status) ? 'selected' : '' }}>Enabled</option>
               </select>
             </div>
           </div>
@@ -150,9 +144,9 @@
             <div class="col-sm-10">
               <select name="payment_scanpay_auto_capture" id="input-captureonorderstatus" class="form-control">
                 <option value="off" {% if payment_scanpay_auto_capture == 'off' %}selected{% endif %}>
-                  {{ text_disabled }}
+                  Disabled
                 </option>
-                <option value="5" {% if payment_scanpay_auto_capture == '5' %}selected{% endif %}>
+                <option value="5" {% if (payment_scanpay_auto_capture == '5' or payment_scanpay_auto_capture == '') %}selected{% endif %}>
                   Capture when order status changes to 'Complete'
                 </option>
                 <option value="3" {% if payment_scanpay_auto_capture == '3' %}selected{% endif %}>
@@ -168,24 +162,21 @@
           {# Language #}
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-language">
-              <span data-toggle="tooltip" title="{{ help_language }}">{{ text_language }}</span>
+              <span data-toggle="tooltip" title="Set the payment window language. 'Auto' allows Scanpay to choose the language based on algorithms.">Language</span>
             </label>
             <div class="col-sm-10">
               <select name="payment_scanpay_language" id="input-language" class="form-control">
-                <option value="" {% if payment_scanpay_language == '' %}selected{% endif %}>{{ text_lang_auto }}</option>
-                <option value="da" {% if payment_scanpay_language == 'da' %}selected{% endif %}>{{ text_lang_da }}</option>
-                <option value="en" {% if payment_scanpay_language == 'en' %}selected{% endif %}>{{ text_lang_en }}</option>
+                <option value="" {% if payment_scanpay_language == '' %}selected{% endif %}>Auto</option>
+                <option value="da" {% if payment_scanpay_language == 'da' %}selected{% endif %}>Danish</option>
+                <option value="en" {% if payment_scanpay_language == 'en' %}selected{% endif %}>English</option>
               </select>
-              {% if error_language %}
-              <div class="text-danger">{{ error_language }}</div>
-              {% endif %}
             </div>
           </div>
 
           {# Sort Order #}
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-sort-order">
-              <span data-toggle="tooltip" title="The priority in the payment method list, where 0 is the highest priority.">{{ text_sort_order }}</span>
+              <span data-toggle="tooltip" title="The priority in the payment method list, where 0 is the highest priority.">Sort Order</span>
             </label>
             <div class="col-sm-10">
               <input type="text" name="payment_scanpay_sort_order" value="{{ payment_scanpay_sort_order }}" placeholder="{{ entry_sort_order }}" id="input-sort-order" class="form-control" />
