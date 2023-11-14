@@ -7,8 +7,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
     */
     public function index() {
         $this->document->setTitle('Scanpay');
-        $this->document->addStyle('view/stylesheet/scanpay/settings.css?v6');
-        $this->document->addScript('view/javascript/scanpay/settings.js?v12');
+        $this->document->addStyle('view/stylesheet/scanpay/settings.css?v01');
+        $this->document->addScript('view/javascript/scanpay/settings.js?v01');
         $this->load->model('setting/setting');
 
         require DIR_SYSTEM . 'library/scanpay/db.php';
@@ -78,6 +78,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
         admin/index.php?route=sale/order/info
     */
     public function order() {
+        $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
+        $this->document->addScript('view/javascript/scanpay/order.js?v1');
         $orderid = $this->request->get['order_id'];
         $apikey = $this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
