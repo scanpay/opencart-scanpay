@@ -1,0 +1,39 @@
+.scanpay--admin--nav {
+    margin-bottom: 12px
+}
+
+.scanpay--admin--nav > .btn {
+    margin-right: 4px;
+}
+
+.scanpay--ping--info {
+    margin: 7px 0 0;
+}
+
+.scanpay--ping--info > b {
+    color: #066306;
+}
+
+.scanpay--ping--alert {
+    background: #fff4cc;
+    border-left: 5px #ffe070 solid;
+    margin: 12px 0 0 0;
+    padding: 5px 5px 10px 11px;
+    text-align: left;
+    font-size: 13px;
+}
+
+.scanpay--ping--alert > div {
+    display: flex;
+}
+
+.scanpay--ping--alert > h4 {
+    color: #565246;
+    font-size: 14px;
+    font-weight: bold;
+    margin: 7px 0 6px;
+}
+
+.scanpay--ping--alert a, .scanpay--ping--info a {
+    text-decoration: underline;
+}

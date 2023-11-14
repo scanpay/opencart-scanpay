@@ -7,6 +7,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
     */
     public function index() {
         $this->document->setTitle('Scanpay');
+        $this->document->addStyle('view/stylesheet/scanpay/settings.css');
         $this->load->model('setting/setting');
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $apikey = (string)($this->request->post['payment_scanpay_apikey'] ??
