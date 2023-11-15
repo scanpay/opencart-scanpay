@@ -10,6 +10,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->document->addStyle('view/stylesheet/scanpay/settings.css?v01');
         $this->document->addScript('view/javascript/scanpay/settings.js?v01');
         $this->load->model('setting/setting');
+        $this->load->model('localisation/order_status'); // needed for order statuses
 
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $apikey = (string)($this->request->post['payment_scanpay_apikey'] ??
@@ -35,6 +36,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'pingdate' => date("Y-m-d H:i", $mtime),
             'action' => $this->url->link('extension/payment/scanpay', "user_token=$token"),
             'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment"),
+            'order_statuses' => $this->model_localisation_order_status->getOrderStatuses(),
             'breadcrumbs' => [
                 [
                     'text' => $this->language->get('text_home'),
@@ -50,14 +52,20 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 ]
             ]
         ];
-        $settings = ['status', 'language', 'apikey', 'auto_capture', 'sort_order'];
-        foreach ($settings as $x) {
-            $key = 'payment_scanpay_' . $x;
-            $data[$key] = $this->request->post[$key] ?? $this->config->get($key);
+        $settings = [
+            'payment_scanpay_status' => 0,
+            'payment_scanpay_language' => 'auto',
+            'payment_scanpay_apikey' => '',
+            'payment_scanpay_auth_status' => 2,
+            'payment_scanpay_auto_capture' => 5,
+            'payment_scanpay_sort_order' => 0
+        ];
+        foreach ($settings as $x => &$default) {
+            $data[$x] = $this->request->post[$x] ?? $this->config->get($x) ?: $default;
         }
 
         // Validate API key
-        if ($data['payment_scanpay_apikey'] !== '') {
+        if (!empty($data['payment_scanpay_apikey'])) {
             $data['invalid_apikey'] = !preg_match("/\d+:\S+/", $data['payment_scanpay_apikey']);
         }
 
@@ -78,27 +86,46 @@ class ControllerExtensionPaymentScanpay extends Controller {
         admin/index.php?route=sale/order/info
     */
     public function order() {
-        $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
-        $this->document->addScript('view/javascript/scanpay/order.js?v1');
         $orderid = $this->request->get['order_id'];
-        $apikey = $this->config->get('payment_scanpay_apikey');
+        $order = $this->model_sale_order->getOrder($orderid);
+        $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
+
+        require DIR_SYSTEM . 'library/scanpay/math.php';
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $data = getScanpayOrder($this->db, $orderid, $shopid);
-        $data['user_token'] = $this->session->data['user_token'];
+
         if (isset($data['trnid'])) {
+            $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
+            $this->document->addScript('view/javascript/scanpay/order.js?v5');
+            $this->document->setTitle('#' . $orderid . ' - ' . $order['firstname'] .
+                ' ' . $order['lastname']);
+            $data['user_token'] = $this->session->data['user_token'];
+            $data['currency'] = explode(' ', $data['authorized'])[1];
+            $authorized = explode(' ', $data['authorized'])[0];
+            $captured = explode(' ', $data['captured'])[0];
+            $refunded = explode(' ', $data['refunded'])[0];
+            $net = scanpay_submoney($captured, $refunded);
+            $data['net_payment'] = $net . ' ' . $data['currency'];
+            $data['net_payment_pct'] = round(($net / $authorized) * 100, 2);
             return $this->load->view('extension/payment/scanpay_order', $data);
         }
     }
 
     public function ajaxSeqMtime() {
-        $shopid = (int)$this->request->get['shopid'];
         require DIR_SYSTEM . 'library/scanpay/db.php';
-        echo (getScanpaySeq($this->db, $shopid))['mtime'];
+        $shopid = (int)$this->request->get['shopid'];
+        $res = getScanpaySeq($this->db, $shopid)['mtime'];
+        $this->response->setOutput($res);
     }
 
-    public function getPaymentTransaction() {
-        echo 'yay';
+    public function ajaxScanpayOrder() {
+        require DIR_SYSTEM . 'library/scanpay/db.php';
+        $shopid = (int)$this->request->get['shopid'];
+        $orderid = (int)$this->request->get['orderid'];
+        $data = getScanpayOrder($this->db, $orderid, $shopid);
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($data));
     }
 
     public function install() {

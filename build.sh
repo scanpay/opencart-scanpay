@@ -15,5 +15,5 @@ if [[ $testing =~ [yY] ]]; then
 fi; echo
 
 cd ".ocmod/"
-zip -r "$DIR/opencart-scanpay-2.0.0-alpha5.ocmod.zip" "upload/"
+zip -r "$DIR/opencart-scanpay-2.0.0-alpha6.ocmod.zip" "upload/"
 rm -rf ".ocmod/"

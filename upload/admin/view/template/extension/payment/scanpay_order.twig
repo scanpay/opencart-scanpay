@@ -1,27 +1,29 @@
 
 <div class="scanpay--order--nav">
-  <a target="_blank" class="btn btn-primary" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}/capture">
-    Capture
-  </a>
+  <h4 class="scanpay--order--nav--h4">
+    Transaction
+    <a target="_blank" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}">#{{ trnid }}</a>
+  </h4>
   <a target="_blank" class="btn btn-danger" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}/refund">
     Refund
   </a>
+  <a target="_blank" id="scanpay--capture--btn" class="btn btn-primary" data-shopid="{{ shopid }}" data-rev="{{ rev }}"
+      href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}/capture">
+    Capture
+  </a>
 </div>
 
-<table class="table table-bordered">
-  <thead>
+<table class="table table-bordered scanpay--order--table">
+  <tr>
+    <td>Authorized</td>
+    <td>{{ authorized }}</td>
+  </tr>
+  {% if authorized == voided %}
     <tr>
-      <td colspan="2">
-        Transaction
-        <a target="_blank" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}">#{{ trnid }}</a>
-      </td>
+      <td>Voided</td>
+      <td>{{ voided }} <i>(100%)</i></td>
     </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Authorized</td>
-      <td>{{ authorized }}</td>
-    </tr>
+  {% else %}
     <tr>
       <td>Captured</td>
       <td>{{ captured }}</td>
@@ -30,11 +32,9 @@
       <td>Refunded</td>
       <td>{{ refunded }}</td>
     </tr>
-    {% if authorized == voided %}
-      <tr>
-        <td>Voided</td>
-        <td>{{ voided }}</td>
-      </tr>
-    {% endif %}
-  </tbody>
+  {% endif %}
+  <tr>
+    <td><b>Net payment</b></td>
+    <td><b>{{ net_payment }}</b> <i>({{ net_payment_pct }}%)</i></td>
+  </tr>
 </table>

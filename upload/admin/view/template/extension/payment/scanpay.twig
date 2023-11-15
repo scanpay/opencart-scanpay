@@ -72,7 +72,8 @@
               API key
             </label>
             <div class="col-sm-10">
-              <input type="text" name="payment_scanpay_apikey" value="{{ payment_scanpay_apikey }}" id="input-apikey" data-shopid="{{ shopid }}" class="form-control">
+              <input type="text" name="payment_scanpay_apikey" value="{{ payment_scanpay_apikey }}" 
+                id="input-apikey" data-shopid="{{ shopid }}" class="form-control" placeholder="Scanpay API key">
               {% if shopid == 0 %}
                 <div class="scanpay--ping--info">
                   {% if invalid_apikey %}
@@ -103,6 +104,24 @@
                   </div>
                 {% endif %}
               {% endif %}
+            </div>
+          </div>
+          {# Order status #}
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="payment_scanpay_auth_status">
+              <span data-toggle="tooltip" title="The order status after the order is paid (authorized).">
+                Order status
+              </span>
+            </label>
+            <div class="col-sm-10">
+              <select name="payment_scanpay_auth_status" id="payment_scanpay_auth_status" class="form-control">
+                {% for status in order_statuses %}
+                  <option {% if payment_scanpay_auth_status == status.order_status_id %}selected{% endif %}
+                      value="{{ status.order_status_id }}">
+                    {{ status.name }}
+                  </option>
+                {% endfor %}
+              </select>
             </div>
           </div>
 

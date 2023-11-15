@@ -165,7 +165,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
                     if ($order['order_status_id'] === '1') {
                         $msg = 'Scanpay: authorized ' . $change['totals']['authorized'];
                         // Change order status from pending to processing
-                        $this->model_checkout_order->addOrderHistory($orderid, 2, $msg, true);
+                        $status = (int)$this->config->get('payment_scanpay_auth_status');
+                        $this->model_checkout_order->addOrderHistory($orderid, $status, $msg, true);
                     }
                     if (isset($meta['trnid'])) {
                         updateScanpayOrder($this->db, $shopid, $change);

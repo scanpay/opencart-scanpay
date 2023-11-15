@@ -1,0 +1,39 @@
+
+#tab-scanpay {
+    margin-top: -10px;
+}
+
+.scanpay--order--nav {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 11px;
+}
+
+.scanpay--order--nav--h4 {
+    flex: 1;
+    margin: 2px 0 0;
+}
+
+.scanpay--order--table i {
+    color: #666;
+    margin-left: 2px;
+}
+
+.scanpay--title {
+    color: #4cb64c;
+    font-size: .9em;
+}
+
+.scanpay--title--auth {
+    color: #ff9000;
+}
+
+/*
+    void/refund: #4c4d5a
+    auth: #ff9000
+    capt: #4cb64c
+    err: #ef2626
+
+
+*/
