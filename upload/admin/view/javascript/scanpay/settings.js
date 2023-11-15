@@ -10,7 +10,7 @@ function init() {
     if (apikey === '' || shopid === '0') return;
 
     // Fetch and update ping dtime
-    document.addEventListener("visibilitychange", (evt) => {
+    document.addEventListener("visibilitychange", () => {
         if (document.visibilityState !== "visible") return;
         fetch('index.php?route=extension/payment/scanpay/ajaxSeqMtime&user_token=' + token + '&shopid=' + shopid)
             .then((res) => res.text())
