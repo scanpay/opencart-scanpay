@@ -74,7 +74,7 @@
             <div class="col-sm-10">
               <input type="text" name="payment_scanpay_apikey" value="{{ payment_scanpay_apikey }}" 
                 id="input-apikey" data-shopid="{{ shopid }}" class="form-control" placeholder="Scanpay API key">
-              {% if shopid == 0 %}
+              {% if shopid is not defined %}
                 <div class="scanpay--ping--info">
                   {% if invalid_apikey %}
                     <span class="scanpay--input--invalid">Invalid API key.</span>
@@ -178,5 +178,4 @@
     </div>
   </div>
 </div>
-
 {{ footer }}

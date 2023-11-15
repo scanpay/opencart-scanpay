@@ -12,28 +12,13 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->load->model('setting/setting');
         $this->load->model('localisation/order_status'); // needed for order statuses
 
-        require DIR_SYSTEM . 'library/scanpay/db.php';
-        $apikey = (string)($this->request->post['payment_scanpay_apikey'] ??
-            $this->config->get('payment_scanpay_apikey'));
-        $shopid = (int)explode(':', $apikey)[0];
-        if ($shopid > 0) {
-            $mtime = (getScanpaySeq($this->db, $shopid))['mtime'];
-        } else {
-            $mtime = 0;
-        }
-
         $catalog = ($this->request->server['HTTPS']) ? HTTPS_CATALOG : HTTP_CATALOG;
         $token = $this->session->data['user_token'];
         $data = [
             'header' => $this->load->controller('common/header'),
             'column_left' => $this->load->controller('common/column_left'),
             'footer' => $this->load->controller('common/footer'),
-            'shopid' => $shopid,
             'logsurl' => $this->url->link('tool/log', "user_token=$token"),
-            'pingurl' => 'https://dashboard.scanpay.dk/' . $shopid . '/settings/api/setup?module=opencart&url=' .
-                rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping'),
-            'dtime' => time() - $mtime,
-            'pingdate' => date("Y-m-d H:i", $mtime),
             'action' => $this->url->link('extension/payment/scanpay', "user_token=$token"),
             'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment"),
             'order_statuses' => $this->model_localisation_order_status->getOrderStatuses(),
@@ -64,9 +49,16 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $data[$x] = $this->request->post[$x] ?? $this->config->get($x) ?: $default;
         }
 
-        // Validate API key
-        if (!empty($data['payment_scanpay_apikey'])) {
-            $data['invalid_apikey'] = !preg_match("/\d+:\S+/", $data['payment_scanpay_apikey']);
+        if (preg_match("/\d+:\S+/", $data['payment_scanpay_apikey'])) {
+            require DIR_SYSTEM . 'library/scanpay/db.php';
+            $data['shopid'] = (int)explode(':', $data['payment_scanpay_apikey'])[0];
+            $data['pingurl'] = 'https://dashboard.scanpay.dk/' . $data['shopid'] . '/settings/api/setup?module=opencart&url=' .
+                rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping');
+            $data['mtime'] = getScanpaySeq($this->db, $data['shopid'])['mtime'];
+            $data['dtime'] = time() - $data['mtime'];
+            $data['pingdate'] = date("Y-m-d H:i", $data['mtime']);
+        } elseif ($data['payment_scanpay_apikey'] !== '') {
+            $data['invalid_apikey'] = true;
         }
 
         // Handle save button
