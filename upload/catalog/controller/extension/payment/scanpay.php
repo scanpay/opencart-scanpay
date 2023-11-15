@@ -142,9 +142,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
                     if (!$this->changeIsValid($change) || $change['type'] !== 'transaction') {
                         continue;
                     }
-                    if (!is_numeric($change['orderid'])) {
-                        $this->log->write('Scanpay warning: #' . $change['orderid'] . 'is an invalid opencart orderID');
-                    }
                     $orderid = (int)$change['orderid'];
                     $order = $this->model_checkout_order->getOrder($orderid);
                     if ($order === false) {
@@ -152,26 +149,14 @@ class ControllerExtensionPaymentScanpay extends Controller {
                         continue;
                     }
                     $meta = getScanpayOrder($this->db, $orderid, $shopid);
-
-                    if ($meta['rev'] >= $change['rev']) {
-                        continue; // old change
-                    }
-                    if ($order['payment_code'] !== 'scanpay') {
-                        $this->log->write("scanpay warning: order #$orderid is not a scanpay order");
+                    if ($order['payment_code'] !== 'scanpay' || $meta['rev'] >= $change['rev']) {
                         continue;
                     }
-                    // TODO: Compare $order['total'] (float) with totals['authorized'] (string)
-
+                    updateScanpayOrder($this->db, $meta, $change);
                     if ($order['order_status_id'] === '1') {
                         $msg = 'Scanpay: authorized ' . $change['totals']['authorized'];
-                        // Change order status from pending to processing
                         $status = (int)$this->config->get('payment_scanpay_auth_status');
                         $this->model_checkout_order->addOrderHistory($orderid, $status, $msg, true);
-                    }
-                    if (isset($meta['trnid'])) {
-                        updateScanpayOrder($this->db, $shopid, $change);
-                    } else {
-                        insertScanpayOrder($this->db, $shopid, $change);
                     }
                 }
                 $seq = $res['seq'];

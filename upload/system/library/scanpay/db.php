@@ -26,34 +26,35 @@ function getScanpayOrder(object $db, int $orderid, int $shopid): array {
     ];
 }
 
-function updateScanpayOrder(object $db, int $shopid, array $data): void {
-    $rev = (int)$data['rev'];
-    $nacts = count($data['acts']);
-    $db->query(
-        "UPDATE " . DB_PREFIX . "scanpay_order
-        SET rev = '$rev',
-            nacts = '$nacts',
-            authorized = '" . $data['totals']['authorized'] . "',
-            captured = '" . $data['totals']['captured'] . "',
-            refunded = '" . $data['totals']['refunded'] . "',
-            voided = '" . $data['totals']['voided'] . "'
-        WHERE orderid = $data[orderid] AND shopid = $shopid"
-    );
-}
-
-function insertScanpayOrder(object $db, int $shopid, array $data): void {
-    $db->query(
-        "INSERT INTO " . DB_PREFIX . "scanpay_order 
-        SET orderid = '" . (int)$data['orderid'] . "',
-            shopid = '$shopid',
-            trnid = '" . (int)$data['id'] . "',
-            rev = '" . (int)$data['rev'] . "',
-            nacts = '" . count($data['acts']) . "',
-            authorized = '" . $data['totals']['authorized'] . "',
-            captured = '" . $data['totals']['captured'] . "',
-            refunded = '" . $data['totals']['refunded'] . "',
-            voided = '" . $data['totals']['voided'] . "'"
-    );
+function updateScanpayOrder(object $db, array $meta, array $change): void {
+    $shopid = (int)$meta['shopid'];
+    if (isset($meta['trnid'])) {
+        $rev = (int)$change['rev'];
+        $nacts = count($change['acts']);
+        $db->query(
+            "UPDATE " . DB_PREFIX . "scanpay_order
+            SET rev = '$rev',
+                nacts = '$nacts',
+                authorized = '" . $change['totals']['authorized'] . "',
+                captured = '" . $change['totals']['captured'] . "',
+                refunded = '" . $change['totals']['refunded'] . "',
+                voided = '" . $change['totals']['voided'] . "'
+            WHERE orderid = $change[orderid] AND shopid = $shopid"
+        );
+    } else {
+        $db->query(
+            "INSERT INTO " . DB_PREFIX . "scanpay_order
+            SET orderid = '" . (int)$change['orderid'] . "',
+                shopid = '$shopid',
+                trnid = '" . (int)$change['id'] . "',
+                rev = '" . (int)$change['rev'] . "',
+                nacts = '" . count($change['acts']) . "',
+                authorized = '" . $change['totals']['authorized'] . "',
+                captured = '" . $change['totals']['captured'] . "',
+                refunded = '" . $change['totals']['refunded'] . "',
+                voided = '" . $change['totals']['voided'] . "'"
+        );
+    }
 }
 
 function getScanpaySeq(object $db, int $shopid): array {
