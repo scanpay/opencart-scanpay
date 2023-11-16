@@ -10,7 +10,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->document->addStyle('view/stylesheet/scanpay/settings.css?v01');
         $this->document->addScript('view/javascript/scanpay/settings.js?v01');
         $this->load->model('setting/setting');
-        $this->load->model('localisation/order_status'); // needed for order statuses
 
         $catalog = ($this->request->server['HTTPS']) ? HTTPS_CATALOG : HTTP_CATALOG;
         $token = $this->session->data['user_token'];
@@ -21,7 +20,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'logsurl' => $this->url->link('tool/log', "user_token=$token"),
             'action' => $this->url->link('extension/payment/scanpay', "user_token=$token"),
             'cancel' => $this->url->link('marketplace/extension', "user_token=$token&type=payment"),
-            'order_statuses' => $this->model_localisation_order_status->getOrderStatuses(),
             'breadcrumbs' => [
                 [
                     'text' => $this->language->get('text_home'),
@@ -41,7 +39,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'payment_scanpay_status' => 0,
             'payment_scanpay_language' => 'auto',
             'payment_scanpay_apikey' => '',
-            'payment_scanpay_auth_status' => 2,
             'payment_scanpay_auto_capture' => 5,
             'payment_scanpay_sort_order' => 0
         ];

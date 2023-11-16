@@ -6,9 +6,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
         index.php?route=checkout/confirm
     */
     public function index() {
-        $this->language->load('extension/payment/scanpay');
-        $this->load->model('checkout/order');
-        $data['button_confirm'] = $this->language->get('button_confirm');
         $data['action'] = $this->url->link('extension/payment/scanpay/pay', '', true);
         return $this->load->view('extension/payment/scanpay', $data);
     }
@@ -127,9 +124,12 @@ class ControllerExtensionPaymentScanpay extends Controller {
                     if (!empty($order) && $order['payment_code'] === 'scanpay') {
                         $sdb->setMeta($orderid, $change);
                         if ($order['order_status_id'] === '0') {
-                            $msg = 'Scanpay: authorized ' . $change['totals']['authorized'];
-                            $status = (int)$this->config->get('payment_scanpay_auth_status');
-                            $this->model_checkout_order->addOrderHistory($orderid, $status, $msg, true);
+                            $this->model_checkout_order->addOrderHistory(
+                                $orderid,
+                                $this->config->get('config_order_status_id'),
+                                'Scanpay: authorized ' . $change['totals']['authorized'],
+                                true
+                            );
                         }
                     }
                 }
