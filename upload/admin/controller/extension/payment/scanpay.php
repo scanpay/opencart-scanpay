@@ -57,7 +57,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $data['mtime'] = $sdb->getSeq()['mtime'];
             $data['dtime'] = time() - $data['mtime'];
             $data['pingdate'] = date("Y-m-d H:i", $data['mtime']);
-            $data['pingurl'] = 'https://dashboard.scanpay.dk/' . $data['shopid'] . '/settings/api/setup?module=opencart&url=' .
+            $data['pingurl'] = "https://dashboard.scanpay.dk/$shopid/settings/api/setup?module=opencart&url=" .
                 rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping');
         } elseif ($data['payment_scanpay_apikey'] !== '') {
             $data['invalid_apikey'] = true;
