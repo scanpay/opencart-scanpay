@@ -5,10 +5,10 @@ class ScanpayDb {
     private int $shopid;
     private string $flock;
 
-	public function __construct(object $db, int $shopid) {
-		$this->db = $db;
+    public function __construct(object $db, int $shopid) {
+        $this->db = $db;
         $this->shopid = $shopid;
-	}
+    }
 
     public function lock(object $oc):void {
         //Simple filelock with mkdir (because it's atomic, fast and dirty!)
@@ -78,7 +78,6 @@ class ScanpayDb {
                     refunded = '" . $change['totals']['refunded'] . "',
                     voided = '" . $change['totals']['voided'] . "'"
         );
-
     }
 
     public function getSeq(): array {
