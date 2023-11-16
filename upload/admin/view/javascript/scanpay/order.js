@@ -10,8 +10,7 @@ function init() {
     const rev = parseInt(btn.dataset.rev, 10);
     if (!shopid || !orderid) return;
 
-    document.querySelector('h1').innerHTML = '#' + orderid + `: <span class="scanpay--title">paid</span>`;
-
+    document.querySelector('h1').innerHTML = '#' + orderid; // + `: <span class="scanpay--title">paid</span>`;
 
     // Fetch and update ping dtime
     document.addEventListener("visibilitychange", () => {
@@ -51,4 +50,3 @@ if (document.readyState === "loading") {
 } else {
     init();
 }
-
