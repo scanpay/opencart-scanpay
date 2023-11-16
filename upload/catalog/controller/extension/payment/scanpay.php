@@ -189,7 +189,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         ) {
             return;
         }
-        $apikey = $this->config->get('payment_scanpay_apikey');
+        $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
 
         require DIR_SYSTEM . 'library/scanpay/client.php';
