@@ -51,12 +51,14 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
         if (preg_match("/\d+:\S+/", $data['payment_scanpay_apikey'])) {
             require DIR_SYSTEM . 'library/scanpay/db.php';
-            $data['shopid'] = (int)explode(':', $data['payment_scanpay_apikey'])[0];
-            $data['pingurl'] = 'https://dashboard.scanpay.dk/' . $data['shopid'] . '/settings/api/setup?module=opencart&url=' .
-                rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping');
-            $data['mtime'] = getScanpaySeq($this->db, $data['shopid'])['mtime'];
+            $shopid = (int)explode(':', $data['payment_scanpay_apikey'])[0];
+            $sdb = new ScanpayDb($this->db, $shopid);
+            $data['shopid'] = $shopid;
+            $data['mtime'] = $sdb->getSeq()['mtime'];
             $data['dtime'] = time() - $data['mtime'];
             $data['pingdate'] = date("Y-m-d H:i", $data['mtime']);
+            $data['pingurl'] = 'https://dashboard.scanpay.dk/' . $data['shopid'] . '/settings/api/setup?module=opencart&url=' .
+                rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping');
         } elseif ($data['payment_scanpay_apikey'] !== '') {
             $data['invalid_apikey'] = true;
         }
@@ -85,7 +87,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
         require DIR_SYSTEM . 'library/scanpay/math.php';
         require DIR_SYSTEM . 'library/scanpay/db.php';
-        $data = getScanpayOrder($this->db, $orderid, $shopid);
+        $sdb = new ScanpayDb($this->db, $shopid);
+        $data = $sdb->getMeta($orderid);
 
         if (isset($data['trnid'])) {
             $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
@@ -107,15 +110,17 @@ class ControllerExtensionPaymentScanpay extends Controller {
     public function ajaxSeqMtime() {
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $shopid = (int)$this->request->get['shopid'];
-        $res = getScanpaySeq($this->db, $shopid)['mtime'];
+        $sdb = new ScanpayDb($this->db, $shopid);
+        $res = $sdb->getSeq()['mtime'];
         $this->response->setOutput($res);
     }
 
     public function ajaxScanpayOrder() {
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $shopid = (int)$this->request->get['shopid'];
+        $sdb = new ScanpayDb($this->db, $shopid);
         $orderid = (int)$this->request->get['orderid'];
-        $data = getScanpayOrder($this->db, $orderid, $shopid);
+        $data = $sdb->getMeta($orderid);
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($data));
     }
@@ -129,7 +134,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'extension/payment/scanpay/captureOnOrderStatus'
         );
         require DIR_SYSTEM . 'library/scanpay/db.php';
-        createScanpayTables($this->db);
+        $sdb = new ScanpayDb($this->db, 0);
+        $sdb->createTables();
     }
 
     public function uninstall() {

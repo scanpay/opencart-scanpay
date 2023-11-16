@@ -85,7 +85,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
     public function ping() {
         set_time_limit(0);
         ignore_user_abort(true);
-
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
         $body = file_get_contents('php://input', false, null, 0, 512); // valid pings are <512 bytes
@@ -102,35 +101,18 @@ class ControllerExtensionPaymentScanpay extends Controller {
             return $this->sendJson(['error' => 'invalid JSON'], 400);
         }
 
-        //Simple filelock with mkdir (because it's atomic, fast and dirty!)
-        $flock = sys_get_temp_dir() . '/scanpay_' . $shopid . '_lock';
-        try {
-            if (!mkdir($flock) && file_exists($flock)) {
-                $this->log->write("Scanpay debug: flock folder ($flock) already exists");
-                $dtime = time() - filemtime($flock);
-                if ($dtime > 0 && $dtime < 240) {
-                    $this->log->write('Scanpay debug: $flock age is ' . $dtime . 'secs');
-                    return $this->sendJson(['error' => 'busy'], 423);
-                }
-            }
-        } catch (\Exception $e) {
-            // Silence mkdir warnings
-            $this->log->write('Scanpay flock error: ' . $e);
-        }
-
         require DIR_SYSTEM . 'library/scanpay/client.php';
         require DIR_SYSTEM . 'library/scanpay/db.php';
-
-        $db = getScanpaySeq($this->db, $shopid);
-        if ($ping['seq'] === $db['seq']) {
-            saveScanpaySeq($this->db, $shopid, $db['seq']);
-            @rmdir($flock);
-            return $this->sendJson(['success' => true], 200); // TODO: use 304
-        }
-
-        $this->load->model('checkout/order');
         $client = new ScanpayClient($apikey);
-        $seq = $db['seq'];
+        $sdb = new ScanpayDb($this->db, $shopid);
+        $sdb->lock($this); // lock or die()
+        $seq = $sdb->getSeq()['seq'];
+        if ($ping['seq'] === $seq) {
+            $sdb->setSeq($seq); // update mtime
+            $sdb->unlock();
+            return $this->sendJson(['success' => true], 200);
+        }
+        $this->load->model('checkout/order');
 
         try {
             while (1) {
@@ -144,28 +126,22 @@ class ControllerExtensionPaymentScanpay extends Controller {
                     }
                     $orderid = (int)$change['orderid'];
                     $order = $this->model_checkout_order->getOrder($orderid);
-                    if ($order === false) {
-                        $this->log->write("scanpay warning: order with #$orderid was not found");
-                        continue;
-                    }
-                    $meta = getScanpayOrder($this->db, $orderid, $shopid);
-                    if ($order['payment_code'] !== 'scanpay' || $meta['rev'] >= $change['rev']) {
-                        continue;
-                    }
-                    updateScanpayOrder($this->db, $meta, $change);
-                    if ($order['order_status_id'] === '1') {
-                        $msg = 'Scanpay: authorized ' . $change['totals']['authorized'];
-                        $status = (int)$this->config->get('payment_scanpay_auth_status');
-                        $this->model_checkout_order->addOrderHistory($orderid, $status, $msg, true);
+                    if (!empty($order) && $order['payment_code'] === 'scanpay') {
+                        $sdb->setMeta($orderid, $change);
+                        if ($order['order_status_id'] === '1') {
+                            $msg = 'Scanpay: authorized ' . $change['totals']['authorized'];
+                            $status = (int)$this->config->get('payment_scanpay_auth_status');
+                            $this->model_checkout_order->addOrderHistory($orderid, $status, $msg, true);
+                        }
                     }
                 }
                 $seq = $res['seq'];
-                saveScanpaySeq($this->db, $shopid, $seq);
+                $sdb->setSeq($seq);
             }
-            @rmdir($flock);
+            $sdb->unlock();
             return $this->sendJson(['success' => true], 200);
         } catch (\Exception $e) {
-            @rmdir($flock);
+            $sdb->unlock();
             $this->log->write('scanpay synchronization error: ' . $e->getMessage());
             return $this->sendJson(['error' => $e->getMessage()], 500);
         }
@@ -220,7 +196,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
         require DIR_SYSTEM . 'library/scanpay/client.php';
         require DIR_SYSTEM . 'library/scanpay/db.php';
-        $meta = getScanpayOrder($this->db, $orderid, $shopid);
+        $sdb = new ScanpayDb($this->db, $shopid);
+        $meta = $sdb->getMeta($orderid);
 
         if (isset($meta['trnid'])) {
             try {
