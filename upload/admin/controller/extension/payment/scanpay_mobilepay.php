@@ -4,6 +4,7 @@ class ControllerExtensionPaymentScanpayMobilePay extends Controller {
     // index(): only executed in plugin settings
     public function index() {
         $this->document->setTitle('Scanpay MobilePay');
+        $this->document->addStyle('view/stylesheet/scanpay/settings.css?v01');
         $this->load->model('setting/setting');
 
         $token = $this->session->data['user_token'];
