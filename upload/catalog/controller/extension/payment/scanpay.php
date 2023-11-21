@@ -1,70 +1,19 @@
 <?php
 
 class ControllerExtensionPaymentScanpay extends Controller {
-    /*
-        index(): only executed on order confirmation page
-        index.php?route=checkout/confirm
-    */
+    // index(): only executed on order confirmation page (?route=checkout/confirm)
     public function index() {
         $data['action'] = $this->url->link('extension/payment/scanpay/pay', '', true);
         return $this->load->view('extension/payment/scanpay', $data);
     }
 
-    /*
-        pay(): button action
-        index.php?route=extension/payment/scanpay/pay
-    */
+    // pay() is called on form submit ($data['action'])
     public function pay() {
-        $this->load->model('checkout/order');
-        $orderid = $this->session->data['order_id'];
-        $order = $this->model_checkout_order->getOrder($orderid);
-        $total = $this->currency->format($order['total'], $order['currency_code'], '', false);
-
-        $data = [
-            'orderid'     => $orderid,
-            'language'    => $this->config->get('payment_scanpay_language'),
-            'successurl'  => $this->url->link('extension/payment/scanpay/success'),
-            'billing'     => array_filter([
-                'name'    => $order['payment_firstname'] . ' ' . $order['payment_lastname'],
-                'email'   => $order['email'],
-                'phone'   => preg_replace('/\s+/', '', (string)$order['telephone']),
-                'address' => array_filter([ $order['payment_address_1'], $order['payment_address_2']]),
-                'city'    => $order['payment_city'],
-                'zip'     => $order['payment_postcode'],
-                'country' => $order['payment_country'],
-                'state'   => $order['payment_zone'],
-                'company' => $order['payment_company'],
-            ]),
-            'shipping'    => array_filter([
-                'name'    => $order['shipping_firstname'] . ' ' . $order['shipping_lastname'],
-                'address' => array_filter([ $order['shipping_address_1'], $order['shipping_address_2'] ]),
-                'city'    => $order['shipping_city'],
-                'zip'     => $order['shipping_postcode'],
-                'country' => $order['shipping_country'],
-                'state'   => $order['shipping_zone'],
-                'company' => $order['shipping_company'],
-            ]),
-            'items' => [[
-                'name' => "Order #$orderid",
-                'total' => $total . ' ' . $order['currency_code']
-            ]]
-        ];
-
-        try {
-            require DIR_SYSTEM . 'library/scanpay/client.php';
-            $apikey = $this->config->get('payment_scanpay_apikey');
-            $client = new ScanpayClient($apikey);
-            $paylink = $client->newURL(
-                array_filter($data),
-                ['headers' => ['X-Cardholder-IP:' => $order['ip']]]
-            );
-        } catch (\Exception $e) {
-            $this->language->load('extension/payment/scanpay');
-            $this->log->write('scanpay error: paylink failed => ' . $e->getMessage());
-            $this->session->data['error'] = $this->language->get('error_failed') . '"' . $e->getMessage() . '"';
-            $this->response->redirect($this->url->link('checkout/checkout', '', true));
-        }
-        $this->response->redirect($paylink, 302);
+        $this->load->model('extension/payment/scanpay');
+        $this->response->redirect(
+            $this->model_extension_payment_scanpay->newUrl(),
+            302
+        );
     }
 
     public function success() {
