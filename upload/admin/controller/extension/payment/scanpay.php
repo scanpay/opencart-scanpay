@@ -1,10 +1,7 @@
 <?php
 
 class ControllerExtensionPaymentScanpay extends Controller {
-    /*
-        index(): only executed in plugin settings
-        admin/index.php?route=extension/payment/scanpay
-    */
+    // index(): only executed in plugin settings
     public function index() {
         $this->document->setTitle('Scanpay');
         $this->document->addStyle('view/stylesheet/scanpay/settings.css?v01');
