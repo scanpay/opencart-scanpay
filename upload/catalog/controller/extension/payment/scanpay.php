@@ -141,8 +141,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
 
-        require DIR_SYSTEM . 'library/scanpay/client.php';
-        require DIR_SYSTEM . 'library/scanpay/db.php';
+        require_once DIR_SYSTEM . 'library/scanpay/client.php';
+        require_once DIR_SYSTEM . 'library/scanpay/db.php';
         $sdb = new ScanpayDb($this->db, $shopid);
         $meta = $sdb->getMeta($orderid);
 
