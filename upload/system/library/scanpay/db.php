@@ -10,7 +10,7 @@ class ScanpayDb {
         $this->shopid = $shopid;
     }
 
-    public function lock(object $oc):void {
+    public function lock(object $oc): void {
         //Simple filelock with mkdir (because it's atomic, fast and dirty!)
         try {
             $this->flock = sys_get_temp_dir() . '/scanpay_' . $this->shopid . '_lock';
@@ -29,7 +29,7 @@ class ScanpayDb {
         }
     }
 
-    public function unlock():void {
+    public function unlock(): void {
         @rmdir($this->flock);
     }
 
