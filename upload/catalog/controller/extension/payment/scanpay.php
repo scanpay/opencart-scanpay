@@ -47,6 +47,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $apikey = $this->config->get('payment_scanpay_apikey');
             $client = new ScanpayClient($apikey);
             $url = $client->newURL(array_filter($data), ['headers' => ['X-Cardholder-IP:' => $order['ip']]]);
+
             if (isset($this->request->get['scanpay_go'])) {
                 $url .= '?go=' . $this->request->get['scanpay_go'];
             }
@@ -67,6 +68,60 @@ class ControllerExtensionPaymentScanpay extends Controller {
         http_response_code($code);
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($data));
+    }
+
+    protected function applyChanges(int $shopid, array $arr) {
+        foreach ($arr as $change) {
+            if (!$this->changeIsValid($change)) {
+                continue;
+            }
+            $orderid = (int)$change['orderid'];
+            $order = $this->model_checkout_order->getOrder($orderid);
+            if (empty($order) || substr($order['payment_code'], 0, 7) !== 'scanpay') {
+                continue;
+            }
+
+            // Change 'scanpay_mobilepay' to 'scanpay' (no other way, sadly)
+            if ($order['payment_code'] !== 'scanpay') {
+                $this->db->query(
+                    "UPDATE " . DB_PREFIX . "order
+                    SET payment_code = 'scanpay'
+                    WHERE order_id = $orderid"
+                );
+            }
+
+            $rev = (int)$change['rev'];
+            $nacts = count($change['acts']);
+            $this->db->query(
+                "INSERT INTO " . DB_PREFIX . "scanpay_order
+                    SET
+                        orderid = $orderid,
+                        shopid = $shopid,
+                        trnid = '" . (int)$change['id'] . "',
+                        rev = $rev,
+                        nacts = $nacts,
+                        authorized = '" . $change['totals']['authorized'] . "',
+                        captured = '" . $change['totals']['captured'] . "',
+                        refunded = '" . $change['totals']['refunded'] . "',
+                        voided = '" . $change['totals']['voided'] . "'
+                    ON DUPLICATE KEY UPDATE
+                        rev = $rev,
+                        nacts = $nacts,
+                        authorized = '" . $change['totals']['authorized'] . "',
+                        captured = '" . $change['totals']['captured'] . "',
+                        refunded = '" . $change['totals']['refunded'] . "',
+                        voided = '" . $change['totals']['voided'] . "'"
+            );
+
+            if ($order['order_status_id'] === '0') {
+                $this->model_checkout_order->addOrderHistory(
+                    $orderid,
+                    $this->config->get('config_order_status_id'),
+                    'Scanpay: authorized ' . $change['totals']['authorized'],
+                    true
+                );
+            }
+        }
     }
 
     public function ping() {
@@ -90,10 +145,12 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
         require DIR_SYSTEM . 'library/scanpay/client.php';
         require DIR_SYSTEM . 'library/scanpay/db.php';
+
         $client = new ScanpayClient($apikey);
         $sdb = new ScanpayDb($this->db, $shopid);
         $sdb->lock($this); // lock or die()
         $seq = $sdb->getSeq()['seq'];
+
         if ($ping['seq'] === $seq) {
             $sdb->setSeq($seq); // update mtime
             $sdb->unlock();
@@ -107,24 +164,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 if (count($res['changes']) === 0) {
                     break; // done
                 }
-                foreach ($res['changes'] as $change) {
-                    if (!$this->changeIsValid($change) || $change['type'] !== 'transaction') {
-                        continue;
-                    }
-                    $orderid = (int)$change['orderid'];
-                    $order = $this->model_checkout_order->getOrder($orderid);
-                    if (!empty($order) && $order['payment_code'] === 'scanpay') {
-                        $sdb->setMeta($orderid, $change);
-                        if ($order['order_status_id'] === '0') {
-                            $this->model_checkout_order->addOrderHistory(
-                                $orderid,
-                                $this->config->get('config_order_status_id'),
-                                'Scanpay: authorized ' . $change['totals']['authorized'],
-                                true
-                            );
-                        }
-                    }
-                }
+                $this->applyChanges($shopid, $res['changes']);
                 $seq = $res['seq'];
                 $sdb->setSeq($seq);
             }
@@ -138,8 +178,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
     }
 
     protected function changeIsValid(array $change): bool {
-        if ($change['type'] !== 'transaction' && $change['type'] !== 'charge' && $change['type'] !== 'subscriber') {
-            $this->log->write('scanpay error: Received unknown seq type: ' . $change['type']);
+        if ($change['type'] !== 'transaction') {
+            $this->log->write('scanpay error: Received unsupported seq type: ' . $change['type']);
             die();
         }
         if (isset($change['error'])) {

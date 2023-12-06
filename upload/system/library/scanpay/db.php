@@ -55,31 +55,6 @@ class ScanpayDb {
         ];
     }
 
-    public function setMeta(int $orderid, array $change): void {
-        $rev = (int)$change['rev'];
-        $nacts = count($change['acts']);
-        $this->db->query(
-            "INSERT INTO " . DB_PREFIX . "scanpay_order
-                SET
-                    orderid = $orderid,
-                    shopid = $this->shopid,
-                    trnid = '" . (int)$change['id'] . "',
-                    rev = $rev,
-                    nacts = $nacts,
-                    authorized = '" . $change['totals']['authorized'] . "',
-                    captured = '" . $change['totals']['captured'] . "',
-                    refunded = '" . $change['totals']['refunded'] . "',
-                    voided = '" . $change['totals']['voided'] . "'
-                ON DUPLICATE KEY UPDATE
-                    rev = $rev,
-                    nacts = $nacts,
-                    authorized = '" . $change['totals']['authorized'] . "',
-                    captured = '" . $change['totals']['captured'] . "',
-                    refunded = '" . $change['totals']['refunded'] . "',
-                    voided = '" . $change['totals']['voided'] . "'"
-        );
-    }
-
     public function getSeq(): array {
         $res = $this->db->query(
             "SELECT * FROM " . DB_PREFIX . "scanpay_seq
