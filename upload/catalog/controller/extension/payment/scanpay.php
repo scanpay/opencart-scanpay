@@ -142,21 +142,27 @@ class ControllerExtensionPaymentScanpay extends Controller {
         if (!isset($ping, $ping['seq'], $ping['shopid']) || !is_int($ping['seq']) || $shopid !== $ping['shopid']) {
             return $this->sendJson(['error' => 'invalid JSON'], 400);
         }
-
-        require DIR_SYSTEM . 'library/scanpay/client.php';
         require DIR_SYSTEM . 'library/scanpay/db.php';
 
-        $client = new ScanpayClient($apikey);
-        $sdb = new ScanpayDb($this->db, $shopid);
-        $sdb->lock($this); // lock or die()
-        $seq = $sdb->getSeq()['seq'];
-
+        $dbi = new ScanpayDb($this->db, $shopid);
+        $seq = $dbi->getSeq()['seq'];
         if ($ping['seq'] === $seq) {
-            $sdb->setSeq($seq); // update mtime
-            $sdb->unlock();
+            $dbi->updateMtime();
             return $this->sendJson(['success' => true], 200);
         }
+
+        $flock = sys_get_temp_dir() . '/scanpay_' . $shopid . '_lock/';
+        if (!@mkdir($flock) && file_exists($flock)) {
+            $dtime = time() - filemtime($flock);
+            if ($dtime >= 0 && $dtime < 60) {
+                // TODO: update seqdb with the new ping (queue it)
+                return $this->sendJson(['error' => 'busy'], 423);
+            }
+        }
+
         $this->load->model('checkout/order');
+        require DIR_SYSTEM . 'library/scanpay/client.php';
+        $client = new ScanpayClient($apikey);
 
         try {
             while (1) {
@@ -166,12 +172,13 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 }
                 $this->applyChanges($shopid, $res['changes']);
                 $seq = $res['seq'];
-                $sdb->setSeq($seq);
+                $dbi->setSeq($seq);
+                touch($flock);
             }
-            $sdb->unlock();
+            rmdir($flock);
             return $this->sendJson(['success' => true], 200);
         } catch (\Exception $e) {
-            $sdb->unlock();
+            rmdir($flock);
             $this->log->write('scanpay synchronization error: ' . $e->getMessage());
             return $this->sendJson(['error' => $e->getMessage()], 500);
         }
@@ -226,8 +233,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
         require_once DIR_SYSTEM . 'library/scanpay/client.php';
         require_once DIR_SYSTEM . 'library/scanpay/db.php';
-        $sdb = new ScanpayDb($this->db, $shopid);
-        $meta = $sdb->getMeta($orderid);
+        $dbi = new ScanpayDb($this->db, $shopid);
+        $meta = $dbi->getMeta($orderid);
 
         if (isset($meta['trnid'])) {
             try {

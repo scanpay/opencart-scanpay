@@ -3,34 +3,10 @@
 class ScanpayDb {
     private object $db;
     private int $shopid;
-    private string $flock;
 
     public function __construct(object $db, int $shopid) {
         $this->db = $db;
         $this->shopid = $shopid;
-    }
-
-    public function lock(object $oc): void {
-        //Simple filelock with mkdir (because it's atomic, fast and dirty!)
-        try {
-            $this->flock = sys_get_temp_dir() . '/scanpay_' . $this->shopid . '_lock';
-            if (!@mkdir($this->flock) && file_exists($this->flock)) {
-                $dtime = time() - filemtime($this->flock);
-                if ($dtime > 0 && $dtime < 240) {
-                    $oc->sendJson(['error' => 'busy'], 423);
-                    die();
-                } else {
-                    $oc->log->write("Scanpay flock [$this->flock] exists (dtime=$dtime)");
-                }
-            }
-        } catch (\Exception $e) {
-            // Silence mkdir warnings (@ does not seem to work???)
-            $oc->log->write("Scanpay flock [$this->flock] failed with: $e");
-        }
-    }
-
-    public function unlock(): void {
-        @rmdir($this->flock);
     }
 
     public function getMeta(int $orderid): array {
@@ -79,6 +55,15 @@ class ScanpayDb {
         $this->db->query(
             "UPDATE " . DB_PREFIX . "scanpay_seq
             SET seq = $seq, mtime = $mtime
+            WHERE shopid = $this->shopid"
+        );
+    }
+
+    public function updateMtime(): void {
+        $mtime = time();
+        $this->db->query(
+            "UPDATE " . DB_PREFIX . "scanpay_seq
+            SET mtime = $mtime
             WHERE shopid = $this->shopid"
         );
     }
