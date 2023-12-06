@@ -1,10 +1,9 @@
 #!/bin/bash
 set -e
 
-DIR="$( cd "$(dirname "$0")" ; pwd -P )/"
-rm -rf ".ocmod/"
-mkdir ".ocmod"
-cp -r "upload/" ".ocmod/upload"
+DIR="$( cd "$(dirname "$0")" ; pwd -P )"
+mkdir -p "$DIR/.ocmod"
+rsync -av "$DIR/upload/" "$DIR/.ocmod/upload"
 
 read -rp "Use test environment (api.scanpay.dev)? (y/N): " testing
 if [[ $testing =~ [yY] ]]; then
@@ -14,6 +13,5 @@ if [[ $testing =~ [yY] ]]; then
     sed -i 's/dashboard\.scanpay\.dk/dashboard\.scanpay\.dev/g' ".ocmod/upload/admin/view/template/extension/payment/scanpay_order.twig"
 fi; echo
 
-cd ".ocmod/"
+cd "$DIR/.ocmod/"
 zip -r "$DIR/opencart-scanpay-2.0.0-alpha6.ocmod.zip" "upload/"
-rm -rf ".ocmod/"
