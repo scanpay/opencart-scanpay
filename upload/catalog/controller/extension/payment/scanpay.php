@@ -9,45 +9,53 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
     // pay() is called on form submit ($data['action'])
     public function pay() {
-        try {
-            require DIR_SYSTEM . 'library/scanpay/client.php';
-            $this->load->model('checkout/order');
-            $orderid = $this->session->data['order_id'];
-            $order = $this->model_checkout_order->getOrder($orderid);
-            $total = $this->currency->format($order['total'], $order['currency_code'], '', false);
-            $data = [
-                'orderid'     => $orderid,
-                'language'    => $this->config->get('payment_scanpay_language'),
-                'successurl'  => $this->url->link('extension/payment/scanpay/success'),
-                'billing'     => array_filter([
-                    'name'    => $order['payment_firstname'] . ' ' . $order['payment_lastname'],
-                    'email'   => $order['email'],
-                    'phone'   => preg_replace('/\s+/', '', (string)$order['telephone']),
-                    'address' => array_filter([ $order['payment_address_1'], $order['payment_address_2']]),
-                    'city'    => $order['payment_city'],
-                    'zip'     => $order['payment_postcode'],
-                    'country' => $order['payment_country'],
-                    'state'   => $order['payment_zone'],
-                    'company' => $order['payment_company'],
-                ]),
-                'shipping'    => array_filter([
-                    'name'    => $order['shipping_firstname'] . ' ' . $order['shipping_lastname'],
-                    'address' => array_filter([ $order['shipping_address_1'], $order['shipping_address_2'] ]),
-                    'city'    => $order['shipping_city'],
-                    'zip'     => $order['shipping_postcode'],
-                    'country' => $order['shipping_country'],
-                    'state'   => $order['shipping_zone'],
-                    'company' => $order['shipping_company'],
-                ]),
-                'items' => [[
-                    'name' => "Order #$orderid",
-                    'total' => $total . ' ' . $order['currency_code']
-                ]]
-            ];
-            $apikey = $this->config->get('payment_scanpay_apikey');
-            $client = new ScanpayClient($apikey);
-            $url = $client->newURL(array_filter($data), ['headers' => ['X-Cardholder-IP:' => $order['ip']]]);
+        require DIR_SYSTEM . 'library/scanpay/client.php';
+        $this->load->model('checkout/order');
+        $client = new ScanpayClient($this->config->get('payment_scanpay_apikey'));
+        $orderid = $this->session->data['order_id'];
+        $order = $this->model_checkout_order->getOrder($orderid);
+        $total = $this->currency->format($order['total'], $order['currency_code'], '', false);
+        $phone = preg_replace('/\s+/', '', (string)$order['telephone']);
 
+        // Add country code for MobilePay (DK only)
+        if (!empty($phone) && $order['payment_iso_code_2'] === 'DK') {
+            $firstNumber = substr($phone, 0, 1);
+            if ($firstNumber !== '+' && $firstNumber !== '0') {
+                $phone = '+45' . $phone;
+            }
+        }
+        $data = [
+            'orderid'     => $orderid,
+            'language'    => $this->config->get('payment_scanpay_language'),
+            'successurl'  => $this->url->link('extension/payment/scanpay/success'),
+            'billing'     => array_filter([
+                'name'    => $order['payment_firstname'] . ' ' . $order['payment_lastname'],
+                'email'   => $order['email'],
+                'phone'   => $phone,
+                'address' => array_filter([ $order['payment_address_1'], $order['payment_address_2']]),
+                'city'    => $order['payment_city'],
+                'zip'     => $order['payment_postcode'],
+                'country' => $order['payment_country'],
+                'state'   => $order['payment_zone'],
+                'company' => $order['payment_company'],
+            ]),
+            'shipping'    => array_filter([
+                'name'    => $order['shipping_firstname'] . ' ' . $order['shipping_lastname'],
+                'address' => array_filter([ $order['shipping_address_1'], $order['shipping_address_2'] ]),
+                'city'    => $order['shipping_city'],
+                'zip'     => $order['shipping_postcode'],
+                'country' => $order['shipping_country'],
+                'state'   => $order['shipping_zone'],
+                'company' => $order['shipping_company'],
+            ]),
+            'items' => [[
+                'name' => "Order #$orderid",
+                'total' => $total . ' ' . $order['currency_code']
+            ]]
+        ];
+
+        try {
+            $url = $client->newURL(array_filter($data), ['headers' => ['X-Cardholder-IP:' => $order['ip']]]);
             if (isset($this->request->get['scanpay_go'])) {
                 $url .= '?go=' . $this->request->get['scanpay_go'];
             }
