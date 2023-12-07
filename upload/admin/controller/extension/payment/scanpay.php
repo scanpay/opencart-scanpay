@@ -69,36 +69,14 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->response->setOutput($this->load->view('extension/payment/scanpay', $data));
     }
 
-    /*
-        order(): Add payment details to order edit
-        admin/index.php?route=sale/order/info
-    */
+    // Add payment details to order info (route=sale/order/info)
     public function order() {
+        $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
+        $this->document->addScript('view/javascript/scanpay/order.js?v5');
         $orderid = $this->request->get['order_id'];
         $order = $this->model_sale_order->getOrder($orderid);
-        $apikey = (string)$this->config->get('payment_scanpay_apikey');
-        $shopid = (int)explode(':', $apikey)[0];
-
-        require DIR_SYSTEM . 'library/scanpay/math.php';
-        require DIR_SYSTEM . 'library/scanpay/db.php';
-        $sdb = new ScanpayDb($this->db, $shopid);
-        $data = $sdb->getMeta($orderid);
-
-        if (isset($data['trnid'])) {
-            $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
-            $this->document->addScript('view/javascript/scanpay/order.js?v5');
-            $this->document->setTitle('#' . $orderid . ' - ' . $order['firstname'] .
-                ' ' . $order['lastname']);
-            $data['user_token'] = $this->session->data['user_token'];
-            $data['currency'] = explode(' ', $data['authorized'])[1];
-            $authorized = explode(' ', $data['authorized'])[0];
-            $captured = explode(' ', $data['captured'])[0];
-            $refunded = explode(' ', $data['refunded'])[0];
-            $net = scanpay_submoney($captured, $refunded);
-            $data['net_payment'] = $net . ' ' . $data['currency'];
-            $data['net_payment_pct'] = round(($net / $authorized) * 100, 2);
-            return $this->load->view('extension/payment/scanpay_order', $data);
-        }
+        $this->document->setTitle('#' . $orderid . ' - ' . $order['firstname'] . ' ' . $order['lastname']);
+        return $this->load->view('extension/payment/scanpay_order');
     }
 
     public function ajaxSeqMtime() {
