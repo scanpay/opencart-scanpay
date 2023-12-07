@@ -39,13 +39,14 @@ class ScanpayDb {
         if ($res->num_rows === 0) {
             $this->db->query(
                 "INSERT INTO " . DB_PREFIX . "scanpay_seq
-                (shopid, seq, mtime)
-                VALUES ($this->shopid, 0, 0)"
+                (shopid, seq, ping, mtime)
+                VALUES ($this->shopid, 0, 0, 0)"
             );
             return ['seq' => 0, 'mtime' => 0];
         }
         return [
             'seq' => (int)$res->rows[0]['seq'],
+            'ping' => (int)$res->rows[0]['ping'],
             'mtime' => (int)$res->rows[0]['mtime']
         ];
     }
@@ -54,16 +55,17 @@ class ScanpayDb {
         $mtime = time();
         $this->db->query(
             "UPDATE " . DB_PREFIX . "scanpay_seq
-            SET seq = $seq, mtime = $mtime
+            SET mtime = $mtime, seq = $seq
             WHERE shopid = $this->shopid"
         );
     }
 
-    public function updateMtime(): void {
+    public function savePing(array $ping): void {
         $mtime = time();
+        $pingSeq = (int)$ping['seq'];
         $this->db->query(
             "UPDATE " . DB_PREFIX . "scanpay_seq
-            SET mtime = $mtime
+            SET mtime = $mtime, ping = $pingSeq
             WHERE shopid = $this->shopid"
         );
     }
@@ -78,8 +80,8 @@ class ScanpayDb {
             "CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "scanpay_seq (
                 shopid  INT unsigned NOT NULL UNIQUE,
                 seq     INT unsigned NOT NULL,
+                ping    INT unsigned NOT NULL,
                 mtime   BIGINT unsigned NOT NULL,
-                locked  TINYINT unsigned NOT NULL,
                 PRIMARY KEY (shopid)
             ) CHARSET=latin1;"
         );

@@ -137,7 +137,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         ignore_user_abort(true);
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
-        $body = file_get_contents('php://input', false, null, 0, 512); // valid pings are <512 bytes
+        $body = file_get_contents('php://input', false, null, 0, 512);
 
         if (
             $shopid === 0 || !isset($_SERVER['HTTP_X_SIGNATURE']) ||
@@ -151,19 +151,19 @@ class ControllerExtensionPaymentScanpay extends Controller {
             return $this->sendJson(['error' => 'invalid JSON'], 400);
         }
         require DIR_SYSTEM . 'library/scanpay/db.php';
-
         $dbi = new ScanpayDb($this->db, $shopid);
+        $dbi->savePing($ping);
         $seq = $dbi->getSeq()['seq'];
+
         if ($ping['seq'] === $seq) {
-            $dbi->updateMtime();
             return $this->sendJson(['success' => true], 200);
         }
 
+        //Simple "filelock" with mkdir (because it's atomic, fast and dirty!)
         $flock = sys_get_temp_dir() . '/scanpay_' . $shopid . '_lock/';
         if (!@mkdir($flock) && file_exists($flock)) {
             $dtime = time() - filemtime($flock);
             if ($dtime >= 0 && $dtime < 60) {
-                // TODO: update seqdb with the new ping (queue it)
                 return $this->sendJson(['error' => 'busy'], 423);
             }
         }
@@ -173,7 +173,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $client = new ScanpayClient($apikey);
 
         try {
-            while (1) {
+            while ($seq < $ping['seq']) {
                 $res = $client->seq($seq);
                 if (count($res['changes']) === 0) {
                     break; // done
@@ -182,6 +182,10 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 $seq = $res['seq'];
                 $dbi->setSeq($seq);
                 touch($flock);
+                usleep(500000); // sleep for 500 ms
+                if ($seq === $ping['seq']) {
+                    $ping['seq'] = $dbi->getSeq()['ping'];
+                }
             }
             rmdir($flock);
             return $this->sendJson(['success' => true], 200);
