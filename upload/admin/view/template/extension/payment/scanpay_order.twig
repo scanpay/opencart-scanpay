@@ -14,27 +14,5 @@
 </div>
 
 <table class="table table-bordered scanpay--order--table">
-  <tr>
-    <td>Authorized</td>
-    <td>{{ authorized }}</td>
-  </tr>
-  {% if authorized == voided %}
-    <tr>
-      <td>Voided</td>
-      <td>{{ voided }} <i>(100%)</i></td>
-    </tr>
-  {% else %}
-    <tr>
-      <td>Captured</td>
-      <td>{{ captured }}</td>
-    </tr>
-    <tr>
-      <td>Refunded</td>
-      <td>{{ refunded }}</td>
-    </tr>
-  {% endif %}
-  <tr>
-    <td><b>Net payment</b></td>
-    <td><b>{{ net_payment }}</b> <i>({{ net_payment_pct }}%)</i></td>
-  </tr>
+  <tbody id="scanpay--order--tbody"></tbody>
 </table>

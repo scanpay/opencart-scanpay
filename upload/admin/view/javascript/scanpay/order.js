@@ -1,49 +1,66 @@
 
 
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get('user_token');
+const orderid = urlParams.get('order_id');
+let rev = 0;
+
+function buildTable(o) {
+    const target = document.getElementById('scanpay--order--tbody');
+    const tbody = target.cloneNode(false);
+    const data = [
+        ['Authorized', o.authorized],
+        ['Captured', o.captured],
+        ['Refunded', o.refunded],
+        ['Voided', o.voided],
+        ['Net payment', o.captured],
+    ];
+    for (const x of data) {
+        const row = tbody.insertRow();
+        const cell1 = row.insertCell();
+        cell1.textContent = x[0];
+        const cell2 = row.insertCell();
+        cell2.textContent = x[1];
+    }
+    target.replaceWith(tbody);
+}
 
 function init() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('user_token');
-    const orderid = urlParams.get('order_id');
-    const btn = document.getElementById('scanpay--capture--btn');
-    const shopid = parseInt(btn.dataset.shopid, 10);
-    const rev = parseInt(btn.dataset.rev, 10);
-    if (!shopid || !orderid) return;
-
-    document.querySelector('h1').innerHTML = '#' + orderid; // + `: <span class="scanpay--title">paid</span>`;
-
-    // Fetch and update ping dtime
+    document.querySelector('h1').innerHTML = '#' + orderid;
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState !== "visible") return;
 
         // Add spinner to panel
-
-        // Fetch
-        fetch('index.php?route=extension/payment/scanpay/ajaxScanpayOrder&user_token=' + token + '&shopid=' + shopid + '&orderid=' + orderid)
-            .then((res) => res.text())
-            .then((str) => {
-                console.log(str);
+        fetch('index.php?route=extension/payment/scanpay/ajaxScanpayOrder&user_token=' + token + '&orderid=' + orderid)
+            .then((res) => res.json()).then((o) => {
+                if (o.rev > rev) buildTable(o);
+                console.log(o);
             });
     });
-
-
-    /*
-        $.ajax({
-            url: 'index.php?route=extension/payment/scanpay/getPaymentTransaction&user_token={{ user_token }}',
-            dataType: 'html',
-            data: {
-                order_id: '{{ order_id }}'
-            },
-            beforeSend: function () {
-                $('#scanpay-info').html('<i class="fa fa-spinner fa-spin fa-5x" style="text-align: center; margin: 0 auto; width: 100%; font-size: 5em;"></i>');
-            },
-            success: function (html) {
-                $('#scanpay-info').html(html);
-            }
-        });
-
-    */
 }
+
+/*
+    if (isset($data['trnid'])) {
+
+        $data['user_token'] = $this->session->data['user_token'];
+        $data['currency'] = explode(' ', $data['authorized'])[1];
+        $authorized = explode(' ', $data['authorized'])[0];
+        $captured = explode(' ', $data['captured'])[0];
+        $refunded = explode(' ', $data['refunded'])[0];
+        $net = scanpay_submoney($captured, $refunded);
+        $data['net_payment'] = $net . ' ' . $data['currency'];
+        $data['net_payment_pct'] = round(($net / $authorized) * 100, 2);
+        return $this->load->view('extension/payment/scanpay_order', $data);
+
+    }
+*/
+
+fetch('index.php?route=extension/payment/scanpay/ajaxScanpayOrder&user_token=' + token + '&orderid=' + orderid)
+    .then((res) => res.json()).then((o) => {
+        buildTable(o);
+        rev = o.rev;
+    });
+
 
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

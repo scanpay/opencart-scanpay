@@ -73,9 +73,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
     public function order() {
         $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
         $this->document->addScript('view/javascript/scanpay/order.js?v5');
-        $orderid = $this->request->get['order_id'];
-        $order = $this->model_sale_order->getOrder($orderid);
-        $this->document->setTitle('#' . $orderid . ' - ' . $order['firstname'] . ' ' . $order['lastname']);
+        $this->document->setTitle('#' . (int)$this->request->get['order_id']);
         return $this->load->view('extension/payment/scanpay_order');
     }
 
@@ -89,10 +87,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
     public function ajaxScanpayOrder() {
         require DIR_SYSTEM . 'library/scanpay/db.php';
-        $shopid = (int)$this->request->get['shopid'];
-        $sdb = new ScanpayDb($this->db, $shopid);
-        $orderid = (int)$this->request->get['orderid'];
-        $data = $sdb->getMeta($orderid);
+        $apikey = (string)$this->config->get('payment_scanpay_apikey');
+        $sdb = new ScanpayDb($this->db, (int)explode(':', $apikey)[0]);
+        $data = $sdb->getMeta((int)$this->request->get['orderid']);
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($data));
     }
