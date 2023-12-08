@@ -152,11 +152,15 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
         require DIR_SYSTEM . 'library/scanpay/db.php';
         $dbi = new ScanpayDb($this->db, $shopid);
-        $dbi->savePing($ping);
         $seq = $dbi->getSeq()['seq'];
 
         if ($ping['seq'] === $seq) {
+            $dbi->savePing($ping);
             return $this->sendJson(['success' => true], 200);
+        } elseif ($ping['seq'] < $seq) {
+            $errMsg = "The received ping seq ($ping[seq]) was smaller than the local seq ($seq)";
+            $this->log->write('scanpay synchronization error: ' . $errMsg);
+            return $this->sendJson(['error' => $errMsg], 400);
         }
 
         //Simple "filelock" with mkdir (because it's atomic, fast and dirty!)
@@ -164,6 +168,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         if (!@mkdir($flock) && file_exists($flock)) {
             $dtime = time() - filemtime($flock);
             if ($dtime >= 0 && $dtime < 60) {
+                $dbi->savePing($ping);
                 return $this->sendJson(['error' => 'busy'], 423);
             }
         }
@@ -178,12 +183,15 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 if (count($res['changes']) === 0) {
                     break; // done
                 }
+                if (!is_int($res['seq']) || $res['seq'] <= $seq) {
+                    throw new \Exception('received invalid sequence number');
+                }
                 $this->applyChanges($shopid, $res['changes']);
                 $seq = $res['seq'];
                 $dbi->setSeq($seq);
                 touch($flock);
                 usleep(500000); // sleep for 500 ms
-                if ($seq === $ping['seq']) {
+                if ($seq >= $ping['seq']) {
                     $ping['seq'] = $dbi->getSeq()['ping'];
                 }
             }
