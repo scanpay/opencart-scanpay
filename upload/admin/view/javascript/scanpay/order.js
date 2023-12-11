@@ -27,6 +27,14 @@ function buildTable(o) {
 
 function init() {
     document.querySelector('h1').innerHTML = '#' + orderid;
+    const table = document.querySelectorAll('.table')[2];
+    const row = table.insertRow();
+    row.innerHTML = `<td>Net payment</td>
+        <td></td>
+        <td>
+            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+        </td>`;
+
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState !== "visible") return;
 
@@ -38,6 +46,9 @@ function init() {
             });
     });
 }
+
+//             <button class="btn btn-success btn-xs"><i class="fa fa-plus-circle"></i></button>
+
 
 /*
     if (isset($data['trnid'])) {
