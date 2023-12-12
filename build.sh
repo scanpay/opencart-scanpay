@@ -11,6 +11,7 @@ if [[ $testing =~ [yY] ]]; then
     sed -i 's/dashboard\.scanpay\.dk/dashboard\.scanpay\.dev/g' ".ocmod/upload/admin/controller/extension/payment/scanpay.php"
     sed -i 's/dashboard\.scanpay\.dk/dashboard\.scanpay\.dev/g' ".ocmod/upload/admin/view/template/extension/payment/scanpay.twig"
     sed -i 's/dashboard\.scanpay\.dk/dashboard\.scanpay\.dev/g' ".ocmod/upload/admin/view/template/extension/payment/scanpay_order.twig"
+    sed -i 's/dashboard\.scanpay\.dk/dashboard\.scanpay\.dev/g' ".ocmod/upload/admin/view/javascript/scanpay/order.js"
 fi; echo
 
 cd "$DIR/.ocmod/"
