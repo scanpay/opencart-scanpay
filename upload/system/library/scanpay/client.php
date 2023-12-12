@@ -20,7 +20,7 @@ class ScanpayClient
         $this->opts = $opts;
         $this->headers = [
             'authorization' => 'Authorization: Basic ' . base64_encode($this->apikey),
-            'x-shop-plugin' => 'X-Shop-Plugin: OC-2.0.0/' . VERSION . '; PHP-2.1.1/' . PHP_VERSION,
+            'x-shop-plugin' => 'X-Shop-Plugin: OC-2.1.0/' . VERSION . '; PHP-2.1.1/' . PHP_VERSION,
             'content-type' => 'Content-Type: application/json',
             'expect' => 'Expect: ',
         ];
