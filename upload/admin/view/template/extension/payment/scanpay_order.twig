@@ -2,13 +2,13 @@
 <div class="scanpay--order--nav">
   <h4 class="scanpay--order--nav--h4">
     Transaction
-    <a target="_blank" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}">#{{ trnid }}</a>
+    <a target="_blank" id="scanpay-h4" href="#"></a>
   </h4>
-  <a target="_blank" class="btn btn-danger" href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}/refund">
+
+  <a target="_blank" id="scanpay-refund-btn" class="btn btn-danger" href="#">
     Refund
   </a>
-  <a target="_blank" id="scanpay--capture--btn" class="btn btn-primary" data-shopid="{{ shopid }}" data-rev="{{ rev }}"
-      href="https://dashboard.scanpay.dk/{{ shopid }}/{{ trnid }}/capture">
+  <a target="_blank" id="scanpay-capture-btn" class="btn btn-primary" href="#">
     Capture
   </a>
 </div>
