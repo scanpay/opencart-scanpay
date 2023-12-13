@@ -24,7 +24,10 @@
                 const dash = 'https://dashboard.scanpay.dk/' + o.shopid + '/' + o.trnid;
                 const net = calcNetPayment(o);
                 row.children[1].textContent = net[0] + ' ' + net[1];
-                if (o.captured === o.authorized) {
+
+                if (o.voided === o.authorized) {
+                    row.children[2].innerHTML = `<button disabled class="btn btn-warning btn-xs" title="Voided"><i class="fa fa-ban"></i></button>`;
+                } else if (o.captured === o.authorized) {
                     if (o.refunded === o.captured) {
                         row.children[2].innerHTML = `<button disabled class="btn btn-danger btn-xs"><i class="fa fa-minus-circle"></i></button>`;
                     } else {
@@ -58,7 +61,6 @@
                 h4.href = dash;
                 document.getElementById('scanpay-capture-btn').href = dash + '/capture';
                 document.getElementById('scanpay-refund-btn').href = dash + '/refund';
-
                 rev = o.rev;
             });
     }
