@@ -183,7 +183,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 if (count($res['changes']) === 0) {
                     break; // done
                 }
-                if (!is_int($res['seq']) || $res['seq'] <= $seq) {
+                // The response contains changes, therefore ...
+                if ($res['seq'] <= $seq) {
                     throw new \Exception('received invalid sequence number');
                 }
                 $this->applyChanges($shopid, $res['changes']);
