@@ -102,9 +102,35 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'catalog/model/checkout/order/addOrderHistory/after',
             'extension/payment/scanpay/captureOnOrderStatus'
         );
-        require DIR_SYSTEM . 'library/scanpay/db.php';
-        $sdb = new ScanpayDb($this->db, 0);
-        $sdb->createTables();
+
+        // Delete old tables if they exist
+        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_seq");
+        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_order");
+
+        // Create new tables
+        $this->db->query(
+            "CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "scanpay_seq (
+                shopid  INT unsigned NOT NULL UNIQUE,
+                seq     INT unsigned NOT NULL,
+                ping    INT unsigned NOT NULL,
+                mtime   BIGINT unsigned NOT NULL,
+                PRIMARY KEY (shopid)
+            ) CHARSET=latin1;"
+        );
+        $this->db->query(
+            "CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "scanpay_order (
+                orderid BIGINT unsigned NOT NULL UNIQUE,
+                shopid INT unsigned NOT NULL,
+                trnid INT unsigned NOT NULL,
+                rev INT unsigned NOT NULL,
+                nacts INT unsigned NOT NULL,
+                authorized VARCHAR(64) NOT NULL,
+                captured VARCHAR(64) NOT NULL,
+                refunded VARCHAR(64) NOT NULL,
+                voided VARCHAR(64) NOT NULL,
+                PRIMARY KEY (orderid)
+            ) CHARSET = latin1;"
+        );
     }
 
     public function uninstall() {
