@@ -2,36 +2,31 @@
 
 // phpcs:ignoreFile
 
+/*
+    Scanpay module client lib
+    Version 2.1.2 (2023-12-13)
+*/
+
 class ScanpayClient
 {
     private $ch; // CurlHandle class is added PHP 8.0
     private array $headers;
-    private string $apikey;
     private string $idemstatus;
-    private array $opts;
 
-    public function __construct(?string $apikey = '', array $opts = [])
+    public function __construct(string $apikey)
     {
         if (!function_exists('curl_init')) {
             die("ERROR: Please enable php-curl\n");
         }
-        $this->ch = curl_init(); // reuse handle
-        $this->apikey = $apikey ?? '';
-        $this->opts = $opts;
+        $this->ch = curl_init();
         $this->headers = [
-            'authorization' => 'Authorization: Basic ' . base64_encode($this->apikey),
-            'x-shop-plugin' => 'X-Shop-Plugin: OC-2.1.0/' . VERSION . '; PHP-2.1.1/' . PHP_VERSION,
+            'authorization' => 'Authorization: Basic ' . base64_encode($apikey),
+            'x-shop-plugin' => 'X-Shop-Plugin: OC-2.1.0/' . VERSION . '; PHP-' . PHP_VERSION,
             'content-type' => 'Content-Type: application/json',
             'expect' => 'Expect: ',
         ];
         /* The 'Expect' header will disable libcurl's expect-logic,
             which will save us a HTTP roundtrip on POSTs >1024b. */
-
-        if (isset($opts['headers'])) {
-            foreach ($opts['headers'] as $key => &$val) {
-                $this->headers[strtolower($key)] = $key . ': ' . $val;
-            }
-        }
     }
 
     private function headerCallback(object $handle, string $header)
@@ -43,42 +38,37 @@ class ScanpayClient
         return strlen($header);
     }
 
-    private function request(string $path, array $opts = [], array $data = null): array
+    private function request(string $path, ?array $opts, ?array $data): array
     {
         $this->idemstatus = '';
-        $headers = $this->headers;
-        if (isset($opts['headers'])) {
-            foreach ($opts['headers'] as $key => &$val) {
-                $headers[strtolower($key)] = $key . ': ' . $val;
-            }
-        }
-        $opts = array_merge($this->opts, $opts);
-
         $curlopts = [
             CURLOPT_URL => 'https://api.scanpay.dk' . $path,
-            CURLOPT_HTTPHEADER => array_values($headers),
-            CURLOPT_TCP_KEEPALIVE => 1, // TODO: CURLOPT_TCP_KEEPINTVL & CURLOPT_TCP_KEEPIDLE
+            CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_CONNECTTIMEOUT => 20,
             CURLOPT_TIMEOUT => 40,
             CURLOPT_DNS_CACHE_TIMEOUT => 180,
-            CURLOPT_DNS_SHUFFLE_ADDRESSES => 1,
+            //CURLOPT_DNS_SHUFFLE_ADDRESSES => 1,
         ];
+
+        $headers = $this->headers;
+        if (isset($opts, $opts['headers'])) {
+            foreach ($opts['headers'] as $key => &$val) {
+                $headers[strtolower($key)] = $key . ': ' . $val;
+            }
+            if (isset($headers['idempotency-key'])) {
+                $curlopts[CURLOPT_HEADERFUNCTION] = [$this, 'headerCallback'];
+            }
+        }
+        $curlopts[CURLOPT_HTTPHEADER] = array_values($headers);
+
         if (isset($data)) {
             $curlopts[CURLOPT_POSTFIELDS] = json_encode($data, JSON_UNESCAPED_SLASHES);
             if ($curlopts[CURLOPT_POSTFIELDS] === false) {
                 throw new \Exception('Failed to JSON encode request to Scanpay: ' . json_last_error_msg());
             }
         }
-        if (isset($headers['idempotency-key'])) {
-            $curlopts[CURLOPT_HEADERFUNCTION] = [$this, 'headerCallback'];
-        }
 
-        if (isset($opts['curl'])) {
-            foreach ($opts['curl'] as $key => &$val) {
-                $curlopts[$key] = $val;
-            }
-        }
         curl_reset($this->ch);
         curl_setopt_array($this->ch, $curlopts);
         $result = curl_exec($this->ch);
@@ -91,7 +81,7 @@ class ScanpayClient
             throw new \Exception((explode("\n", $result)[0]));
         }
 
-        if (isset($headers['idempotency-key']) && $this->idemstatus !== 'ok') {
+        if (isset($opts, $headers['idempotency-key']) && $this->idemstatus !== 'ok') {
             throw new \Exception("Server failed to provide idempotency. Scanpay returned $statusCode - "
                 . explode("\n", $result)[0]);
         }
@@ -104,7 +94,7 @@ class ScanpayClient
     }
 
     // newURL: Create a new payment link
-    public function newURL(array $data, array $opts = []): string
+    public function newURL(array $data, array $opts): string
     {
         $o = $this->request('/v1/new', $opts, $data);
         if (isset($o['url']) && filter_var($o['url'], FILTER_VALIDATE_URL)) {
@@ -113,10 +103,10 @@ class ScanpayClient
         throw new \Exception('Invalid response from server');
     }
 
-    // seq: Get array of changes since the reqested seqnum
-    public function seq(int $seqnum, array $opts = []): array
+    // seq: Get array of changes since the reqested sequence number
+    public function seq(int $num): array
     {
-        $o = $this->request('/v1/seq/' . $seqnum, $opts);
+        $o = $this->request('/v1/seq/' . $num, null, null);
         if (
             isset($o['seq']) && is_int($o['seq']) &&
             isset($o['changes']) && is_array($o['changes'])
@@ -126,43 +116,9 @@ class ScanpayClient
         throw new \Exception('Invalid response from server');
     }
 
-    public function parsePing(string $body, string $signature): array
+    public function capture(int $trnid, array $data): array
     {
-        $checksum = base64_encode(hash_hmac('sha256', $body, $this->apikey, true));
-        if (hash_equals($checksum, $signature)) {
-            $o = json_decode($body, true);
-            if ($o !== null && isset($o['seq']) && is_int($o['seq']) && isset($o['shopid'])) {
-                return $o;
-            }
-        }
-        throw new \Exception('invalid ping');
-    }
-
-    // handlePing: Convert data to JSON and validate integrity
-    public function handlePing(array $opts = []): array
-    {
-        if (isset($opts['signature'])) {
-            $signature = $opts['signature'];
-        } elseif (isset($_SERVER['HTTP_X_SIGNATURE'])) {
-            $signature = $_SERVER['HTTP_X_SIGNATURE'];
-        } else {
-            throw new \Exception('missing ping signature');
-        }
-        $body = isset($opts['body']) ? $opts['body'] : file_get_contents('php://input');
-        if ($body === false) {
-            throw new \Exception('unable to get ping body');
-        }
-        return $this->parsePing($body, $signature);
-    }
-
-    public function capture(int $trnid, array $data, array $opts = []): array
-    {
-        return $this->request("/v1/transactions/$trnid/capture", $opts, $data);
-    }
-
-    public function generateIdempotencyKey(): string
-    {
-        return rtrim(base64_encode(random_bytes(32)), '=');
+        return $this->request("/v1/transactions/$trnid/capture", null, $data);
     }
 
     public function charge(int $subid, array $data, array $opts = []): array
