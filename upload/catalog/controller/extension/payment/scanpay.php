@@ -150,12 +150,19 @@ class ControllerExtensionPaymentScanpay extends Controller {
         if (!isset($ping, $ping['seq'], $ping['shopid']) || !is_int($ping['seq']) || $shopid !== $ping['shopid']) {
             return $this->sendJson(['error' => 'invalid JSON'], 400);
         }
-        require DIR_SYSTEM . 'library/scanpay/db.php';
-        $dbi = new ScanpayDb($this->db, $shopid);
-        $seq = $dbi->getSeq()['seq'];
+
+        $tbl = DB_PREFIX . 'scanpay_seq';
+        $seqdb = $this->db->query("SELECT * FROM $tbl WHERE shopid = $shopid");
+        if ($seqdb->num_rows !== 1) {
+            $errMsg = "opencart seq table is empty";
+            $this->log->write('scanpay synchronization error: ' . $errMsg);
+            return $this->sendJson(['error' => $errMsg], 400);
+        }
+        $seq = (int)$seqdb->rows[0]['seq'];
 
         if ($ping['seq'] === $seq) {
-            $dbi->savePing($ping);
+            $mtime = time();
+            $this->db->query("UPDATE $tbl SET mtime = $mtime, ping = $ping[seq] WHERE shopid = $shopid");
             return $this->sendJson(['success' => true], 200);
         } elseif ($ping['seq'] < $seq) {
             $errMsg = "The received ping seq ($ping[seq]) was smaller than the local seq ($seq)";
@@ -168,7 +175,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
         if (!@mkdir($flock) && file_exists($flock)) {
             $dtime = time() - filemtime($flock);
             if ($dtime >= 0 && $dtime < 60) {
-                $dbi->savePing($ping);
+                $mtime = time();
+                $this->db->query("UPDATE $tbl SET mtime = $mtime, ping = $ping[seq] WHERE shopid = $shopid");
                 return $this->sendJson(['error' => 'busy'], 423);
             }
         }
@@ -176,7 +184,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->load->model('checkout/order');
         require DIR_SYSTEM . 'library/scanpay/client.php';
         $client = new ScanpayClient($apikey);
-
         try {
             while ($seq < $ping['seq']) {
                 $res = $client->seq($seq);
@@ -188,12 +195,18 @@ class ControllerExtensionPaymentScanpay extends Controller {
                     throw new \Exception('received invalid sequence number');
                 }
                 $this->applyChanges($shopid, $res['changes']);
-                $seq = $res['seq'];
-                $dbi->setSeq($seq);
+
+                // Update seq in the DB
+                $seq = (int)$res['seq'];
+                $mtime = time();
+                $table = DB_PREFIX . 'scanpay_seq';
+                $this->db->query("UPDATE $table SET mtime = $mtime, seq = $seq WHERE shopid = $shopid");
+
                 touch($flock);
-                usleep(500000); // sleep for 500 ms
+                usleep(500000); // 500 ms
                 if ($seq >= $ping['seq']) {
-                    $ping['seq'] = $dbi->getSeq()['ping'];
+                    $seqdb = $this->db->query("SELECT * FROM $tbl WHERE shopid = $shopid");
+                    $ping['seq'] = (int)$seqdb->rows[0]['ping'];
                 }
             }
             rmdir($flock);
@@ -251,13 +264,14 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
-
-        require_once DIR_SYSTEM . 'library/scanpay/client.php';
-        require_once DIR_SYSTEM . 'library/scanpay/db.php';
-        $dbi = new ScanpayDb($this->db, $shopid);
-        $meta = $dbi->getMeta($orderid);
+        $sql = $this->db->query(
+            "SELECT trnid,nacts FROM " . DB_PREFIX . "scanpay_order
+            WHERE orderid = $orderid AND shopid = $shopid"
+        );
+        $meta = ($sql->num_rows) ? $sql->rows[0] : [];
 
         if (isset($meta['trnid'])) {
+            require_once DIR_SYSTEM . 'library/scanpay/client.php';
             try {
                 $client = new ScanpayClient($apikey);
                 $client->capture($meta['trnid'], [
