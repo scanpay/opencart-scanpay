@@ -52,10 +52,10 @@ class ControllerExtensionPaymentScanpay extends Controller {
             if (!$sql->num_rows) {
                 $this->db->query("INSERT INTO $this->seqTbl (shopid, seq, ping, mtime) VALUES ($shopid, 0, 0, 0)");
             }
-            $data['mtime'] = ($sql->num_rows) ? (int)$sql->row['mtime'] : 0;
+            $mtime = $sql->row['mtime'] ?? 0;
             $data['shopid'] = $shopid;
-            $data['dtime'] = time() - $data['mtime'];
-            $data['pingdate'] = date("Y-m-d H:i", $data['mtime']);
+            $data['dtime'] = time() - $mtime;
+            $data['pingdate'] = date("Y-m-d H:i", $mtime);
             $data['pingurl'] = "https://dashboard.scanpay.dk/$shopid/settings/api/setup?module=opencart&url=" .
                 rawurlencode($catalog . 'index.php?route=extension/payment/scanpay/ping');
         } elseif ($data['payment_scanpay_apikey'] !== '') {
@@ -71,7 +71,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 $data['error_warning'] = 'Warning: You do not have permission to modify these settings!';
             }
         }
-        $this->response->setOutput($this->load->view('extension/payment/scanpay', $data));
+        $this->response->setOutput($this->load->view('extension/payment/scanpay/settings', $data));
     }
 
     // Add payment details to order info (route=sale/order/info)
@@ -79,7 +79,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
         $this->document->addScript('view/javascript/scanpay/order.js?v5');
         $this->document->setTitle('#' . (int)$this->request->get['order_id']);
-        return $this->load->view('extension/payment/scanpay_order');
+        return $this->load->view('extension/payment/scanpay/order_meta');
     }
 
     public function ajaxSeqMtime() {
