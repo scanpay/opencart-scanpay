@@ -151,18 +151,10 @@ class ControllerExtensionPaymentScanpay extends Controller {
             return $this->sendJson(['error' => 'invalid JSON'], 400);
         }
 
-        // TODO: shorten
-        $seqdb = $this->db->query("SELECT seq FROM $this->seqTbl WHERE shopid = $shopid");
-        if (!$seqdb->num_rows) {
-            $errMsg = "opencart seq table is empty";
-            $this->log->write('scanpay synchronization error: ' . $errMsg);
-            return $this->sendJson(['error' => $errMsg], 400);
-        }
-        $seq = (int)$seqdb->rows[0]['seq'];
-
+        $seq = (int)$this->db->query("SELECT seq FROM $this->seqTbl WHERE shopid = $shopid")->row['seq'];
         if ($ping['seq'] === $seq) {
             $mtime = time();
-            $this->db->query("UPDATE $this->seqTbl SET mtime = $mtime, ping = $ping[seq] WHERE shopid = $shopid");
+            $this->db->query("UPDATE $this->seqTbl SET mtime = $mtime WHERE shopid = $shopid");
             return $this->sendJson(['success' => true], 200);
         } elseif ($ping['seq'] < $seq) {
             $errMsg = "The received ping seq ($ping[seq]) was smaller than the local seq ($seq)";
@@ -203,8 +195,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 touch($flock);
                 usleep(500000); // 500 ms
                 if ($seq >= $ping['seq']) {
-                    $seqdb = $this->db->query("SELECT ping FROM $this->seqTbl WHERE shopid = $shopid");
-                    $ping['seq'] = (int)$seqdb->rows[0]['ping'];
+                    $ping['seq'] = (int)$this->db->query(
+                        "SELECT ping FROM $this->seqTbl WHERE shopid = $shopid"
+                    )->row['ping'];
                 }
             }
             rmdir($flock);
@@ -262,11 +255,10 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
-        $sql = $this->db->query(
+        $meta = $this->db->query(
             "SELECT trnid, nacts FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid"
-        );
-        if ($sql->num_rows) {
-            $meta = $sql->rows[0];
+        )->row;
+        if ($meta['trnid']) {
             require_once DIR_SYSTEM . 'library/scanpay/client.php';
             try {
                 $client = new ScanpayClient($apikey);

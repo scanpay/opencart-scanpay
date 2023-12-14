@@ -52,7 +52,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
             if (!$sql->num_rows) {
                 $this->db->query("INSERT INTO $this->seqTbl (shopid, seq, ping, mtime) VALUES ($shopid, 0, 0, 0)");
             }
-            $data['mtime'] = ($sql->num_rows) ? (int)$sql->rows[0]['mtime'] : 0;
+            $data['mtime'] = ($sql->num_rows) ? (int)$sql->row['mtime'] : 0;
             $data['shopid'] = $shopid;
             $data['dtime'] = time() - $data['mtime'];
             $data['pingdate'] = date("Y-m-d H:i", $data['mtime']);
@@ -84,32 +84,17 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
     public function ajaxSeqMtime() {
         $shopid = (int)$this->request->get['shopid'];
-        $sql = $this->db->query("SELECT mtime FROM $this->seqTbl WHERE shopid = $shopid");
-        $mtime = ($sql->num_rows) ? (int)$sql->rows[0]['mtime'] : 0;
-        $this->response->setOutput($mtime);
+        $this->response->setOutput(json_encode(
+            $this->db->query("SELECT mtime FROM $this->seqTbl WHERE shopid = $shopid")->row
+        ));
     }
 
     public function ajaxScanpayOrder() {
-        $apikey = (string)$this->config->get('payment_scanpay_apikey');
-        $shopid = (int)explode(':', $apikey)[0];
+        $shopid = (int)explode(':', (string)$this->config->get('payment_scanpay_apikey'))[0];
         $orderid = (int)$this->request->get['orderid'];
-        $sql = $this->db->query("SELECT * FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid");
-        $data = [];
-        if ($sql->num_rows) {
-            $data = [
-                'orderid' => (int)$sql->rows[0]['orderid'],
-                'shopid' => (int)$sql->rows[0]['shopid'],
-                'trnid' => (int)$sql->rows[0]['trnid'],
-                'rev' => (int)$sql->rows[0]['rev'],
-                'nacts' => (int)$sql->rows[0]['nacts'],
-                'authorized' => (string)$sql->rows[0]['authorized'],
-                'captured' => (string)$sql->rows[0]['captured'],
-                'refunded' => (string)$sql->rows[0]['refunded'],
-                'voided' => (string)$sql->rows[0]['voided'],
-            ];
-        }
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($data));
+        $this->response->setOutput(json_encode(
+            $this->db->query("SELECT * FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid")->row
+        ));
     }
 
     public function install() {

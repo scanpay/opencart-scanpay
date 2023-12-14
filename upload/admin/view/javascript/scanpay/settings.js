@@ -14,9 +14,9 @@
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState !== "visible") return;
             fetch('index.php?route=extension/payment/scanpay/ajaxSeqMtime&user_token=' + token + '&shopid=' + shopid)
-                .then((res) => res.text())
-                .then((str) => {
-                    const dtime = Math.floor(Date.now() / 1000) -  parseInt(str, 10);
+                .then((res) => res.json())
+                .then((o) => {
+                    const dtime = Math.floor(Date.now() / 1000) -  parseInt(o.mtime, 10);
                     if (dtime > 600) return;
                     document.getElementById('scanpay--dtime').textContent = dtime;
                     const alert = document.querySelector('.scanpay--ping--alert');
