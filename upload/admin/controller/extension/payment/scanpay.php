@@ -1,6 +1,9 @@
 <?php
 
 class ControllerExtensionPaymentScanpay extends Controller {
+    private $seqTbl = DB_PREFIX . 'scanpay_seq';
+    private $metaTbl = DB_PREFIX . 'scanpay_order';
+
     // index(): only executed in plugin settings
     public function index() {
         $this->document->setTitle('Scanpay');
@@ -45,19 +48,11 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
         if (preg_match("/\d+:\S+/", $data['payment_scanpay_apikey'])) {
             $shopid = (int)explode(':', $data['payment_scanpay_apikey'])[0];
-            $sql = $this->db->query(
-                "SELECT * FROM " . DB_PREFIX . "scanpay_seq WHERE shopid = $shopid"
-            );
-            if ($sql->num_rows === 0) {
-                $this->db->query(
-                    "INSERT INTO " . DB_PREFIX . "scanpay_seq
-                    (shopid, seq, ping, mtime)
-                    VALUES ($shopid, 0, 0, 0)"
-                );
-                $data['mtime'] = 0;
-            } else {
-                $data['mtime'] = (int)$sql->rows[0]['mtime'];
+            $sql = $this->db->query("SELECT mtime FROM $this->seqTbl WHERE shopid = $shopid");
+            if (!$sql->num_rows) {
+                $this->db->query("INSERT INTO $this->seqTbl (shopid, seq, ping, mtime) VALUES ($shopid, 0, 0, 0)");
             }
+            $data['mtime'] = ($sql->num_rows) ? (int)$sql->rows[0]['mtime'] : 0;
             $data['shopid'] = $shopid;
             $data['dtime'] = time() - $data['mtime'];
             $data['pingdate'] = date("Y-m-d H:i", $data['mtime']);
@@ -89,7 +84,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
     public function ajaxSeqMtime() {
         $shopid = (int)$this->request->get['shopid'];
-        $sql = $this->db->query("SELECT * FROM " . DB_PREFIX . "scanpay_seq WHERE shopid = $shopid");
+        $sql = $this->db->query("SELECT mtime FROM $this->seqTbl WHERE shopid = $shopid");
         $mtime = ($sql->num_rows) ? (int)$sql->rows[0]['mtime'] : 0;
         $this->response->setOutput($mtime);
     }
@@ -98,11 +93,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $apikey = (string)$this->config->get('payment_scanpay_apikey');
         $shopid = (int)explode(':', $apikey)[0];
         $orderid = (int)$this->request->get['orderid'];
-        $sql = $this->db->query(
-            "SELECT * FROM " . DB_PREFIX . "scanpay_order WHERE orderid = $orderid AND shopid = $shopid"
-        );
+        $sql = $this->db->query("SELECT * FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid");
         $data = [];
-        if ($sql->num_rows === 0) {
+        if ($sql->num_rows) {
             $data = [
                 'orderid' => (int)$sql->rows[0]['orderid'],
                 'shopid' => (int)$sql->rows[0]['shopid'],
@@ -128,13 +121,11 @@ class ControllerExtensionPaymentScanpay extends Controller {
             'extension/payment/scanpay/captureOnOrderStatus'
         );
 
-        // Delete old tables if they exist
-        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_seq");
-        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_order");
+        $this->db->query("DROP TABLE IF EXISTS $this->seqTbl");
+        $this->db->query("DROP TABLE IF EXISTS $this->metaTbl");
 
-        // Create new tables
         $this->db->query(
-            "CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "scanpay_seq (
+            "CREATE TABLE $this->seqTbl (
                 shopid  INT unsigned NOT NULL UNIQUE,
                 seq     INT unsigned NOT NULL,
                 ping    INT unsigned NOT NULL,
@@ -142,8 +133,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 PRIMARY KEY (shopid)
             ) CHARSET=latin1;"
         );
+
         $this->db->query(
-            "CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "scanpay_order (
+            "CREATE TABLE $this->metaTbl (
                 orderid BIGINT unsigned NOT NULL UNIQUE,
                 shopid INT unsigned NOT NULL,
                 trnid INT unsigned NOT NULL,
@@ -159,8 +151,9 @@ class ControllerExtensionPaymentScanpay extends Controller {
     }
 
     public function uninstall() {
-        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_seq");
-        $this->db->query("DROP TABLE IF EXISTS " . DB_PREFIX . "scanpay_order");
+        $this->db->query("DROP TABLE IF EXISTS $this->seqTbl");
+        $this->db->query("DROP TABLE IF EXISTS $this->metaTbl");
+
         $this->load->model('setting/event');
         $this->model_setting_event->deleteEventByCode('scanpay');
     }
