@@ -1,0 +1,8 @@
+{
+    "private": true,
+    "dependencies": {
+      "eslint": "latest",
+      "sass": "latest",
+      "terser": "latest"
+    }
+}

@@ -7,8 +7,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
     // index(): only executed in plugin settings
     public function index() {
         $this->document->setTitle('Scanpay');
-        $this->document->addStyle('view/stylesheet/scanpay/settings.css?v01');
-        $this->document->addScript('view/javascript/scanpay/settings.js?v01');
+        $this->document->addStyle('view/stylesheet/scanpay/settings.css?vEXTENSION_VERSION');
+        $this->document->addScript('view/javascript/scanpay/settings.js?vEXTENSION_VERSION');
         $this->load->model('setting/setting');
 
         $catalog = ($this->request->server['HTTPS']) ? HTTPS_CATALOG : HTTP_CATALOG;
@@ -76,20 +76,20 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
     // Add payment details to order info (route=sale/order/info)
     public function order() {
-        $this->document->addStyle('view/stylesheet/scanpay/order.css?v1');
-        $this->document->addScript('view/javascript/scanpay/order.js?v5');
+        $this->document->addStyle('view/stylesheet/scanpay/order.css?vEXTENSION_VERSION');
+        $this->document->addScript('view/javascript/scanpay/order.js?vEXTENSION_VERSION');
         $this->document->setTitle('#' . (int)$this->request->get['order_id']);
         return $this->load->view('extension/payment/scanpay/order_meta');
     }
 
     public function ajaxSeqMtime() {
-        $shopid = (int)$this->request->get['shopid'];
+        $shopid = (int)explode(':', (string)$this->config->get('payment_scanpay_apikey'))[0];
         $this->response->setOutput(json_encode(
             $this->db->query("SELECT mtime FROM $this->seqTbl WHERE shopid = $shopid")->row
         ));
     }
 
-    public function ajaxScanpayOrder() {
+    public function ajaxMeta() {
         $shopid = (int)explode(':', (string)$this->config->get('payment_scanpay_apikey'))[0];
         $orderid = (int)$this->request->get['orderid'];
         $this->response->setOutput(json_encode(

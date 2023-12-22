@@ -11,7 +11,7 @@
 }
 
 .scanpay--ping--info {
-    margin: 7px 0 0;
+    margin: 8px 0 0;
 }
 
 .scanpay--ping--info > b {
@@ -45,4 +45,13 @@
 .scanpay--input--invalid {
     color: #e3503e;
     font-weight: bold;
+}
+
+
+#scanpay--info--version {
+    margin-top: 6px;
+}
+
+.scanpay-outdated {
+    color: #8e0404;
 }

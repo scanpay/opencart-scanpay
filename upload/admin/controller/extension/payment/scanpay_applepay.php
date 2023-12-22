@@ -4,7 +4,7 @@ class ControllerExtensionPaymentScanpayApplePay extends Controller {
     // index(): only executed in plugin settings
     public function index() {
         $this->document->setTitle('Scanpay Apple Pay');
-        $this->document->addStyle('view/stylesheet/scanpay/settings.css?v01');
+        $this->document->addStyle('view/stylesheet/scanpay/settings.css?vEXTENSION_VERSION');
         $this->load->model('setting/setting');
 
         $token = $this->session->data['user_token'];
