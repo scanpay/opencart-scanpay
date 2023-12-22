@@ -21,7 +21,7 @@ class ScanpayClient
         $this->ch = curl_init();
         $this->headers = [
             'authorization' => 'Authorization: Basic ' . base64_encode($apikey),
-            'x-shop-plugin' => 'X-Shop-Plugin: OC-2.1.0/' . VERSION . '; PHP-' . PHP_VERSION,
+            'x-shop-plugin' => 'X-Shop-Plugin: OC-EXTENSION_VERSION/' . VERSION . '; PHP-' . PHP_VERSION,
             'content-type' => 'Content-Type: application/json',
             'expect' => 'Expect: ',
         ];
