@@ -3,3 +3,4 @@
 /node_modules
 /.ocmod/
 /*.zip
+pnpm-lock.yaml
