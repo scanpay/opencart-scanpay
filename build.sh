@@ -36,5 +36,11 @@ find -L .ocmod -iname '*.js' | while read f; do
     compress "$f"
 done
 
+# Minify stylesheet (Sass)
+find -L .ocmod -iname '*.scss' | while read f; do
+    node_modules/.bin/sass "${f%.*}.scss" "${f%.*}.css"
+    compress "${f%.*}.css"
+done
+
 cd "$DIR/.ocmod/"
 zip -r "$DIR/opencart-scanpay-$version.ocmod.zip" "upload/"
