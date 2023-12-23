@@ -31,13 +31,13 @@ find .ocmod/ -type f -name "*.php" -exec sed -i "s/EXTENSION_VERSION/$version/g"
 find .ocmod/ -type f -name "*.js" -exec sed -i "s/EXTENSION_VERSION/$version/g" {} +
 
 # Minify JavaScript
-find -L .ocmod -iname '*.js' | while read f; do
+find -L .ocmod -iname '*.js' | while read -r f; do
     node_modules/.bin/terser "$f" --mangle -o "$f"
     compress "$f"
 done
 
 # Minify stylesheet (Sass)
-find -L .ocmod -iname '*.scss' | while read f; do
+find -L .ocmod -iname '*.scss' | while read -r f; do
     node_modules/.bin/sass "${f%.*}.scss" "${f%.*}.css"
     compress "${f%.*}.css"
 done
