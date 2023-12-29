@@ -40,4 +40,5 @@
     <exclude-pattern>*.js</exclude-pattern>
     <exclude-pattern>*.css</exclude-pattern>
     <exclude-pattern>upload/system/library/scanpay.php</exclude-pattern>
+    <exclude-pattern>node_modules/</exclude-pattern>
 </ruleset>
