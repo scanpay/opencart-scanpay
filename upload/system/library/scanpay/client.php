@@ -1,10 +1,8 @@
 <?php
 
-// phpcs:ignoreFile
-
 /*
     Scanpay module client lib
-    Version 2.1.2 (2023-12-13)
+    Version 2.2.0 (2023-12-29)
 */
 
 class ScanpayClient
@@ -107,13 +105,13 @@ class ScanpayClient
     public function seq(int $num): array
     {
         $o = $this->request('/v1/seq/' . $num, null, null);
-        if (
-            isset($o['seq']) && is_int($o['seq']) &&
-            isset($o['changes']) && is_array($o['changes'])
-        ) {
-            return $o;
+        if (isset($o['seq'], $o['changes']) && is_int($o['seq']) && is_array($o['changes'])) {
+            $empty = empty($o['changes']);
+            if (($empty && $o['seq'] <= $num) || (!$empty && $o['seq'] > $num)) {
+                return $o;
+            }
         }
-        throw new \Exception('Invalid response from server');
+        throw new \Exception('Invalid seq from server');
     }
 
     public function capture(int $trnid, array $data): array
