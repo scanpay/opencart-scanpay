@@ -91,10 +91,32 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
     public function ajaxMeta() {
         $shopid = (int)explode(':', (string)$this->config->get('payment_scanpay_apikey'))[0];
+        if (!isset($this->request->get['orderid']) || $shopid === 0) {
+            die();
+        }
         $orderid = (int)$this->request->get['orderid'];
-        $this->response->setOutput(json_encode(
-            $this->db->query("SELECT * FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid")->row
-        ));
+        $meta = $this->db->query("SELECT * FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid")->row;
+        $rev = $this->request->get['rev'] ?? null;
+
+        if (isset($rev, $meta['rev']) && $rev >= $meta['rev']) {
+            // Backoff strategy: .5s, 1s, 2s, 4s, 8s: Total: 15.5s
+            $s = 1;
+            usleep(500000); // 0.5 secs. Note: usleep is only safe below 1s
+            while (1) {
+                $meta = $this->db->query(
+                    "SELECT * FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid"
+                )->row;
+                if ($meta['rev'] > $rev || $s > 8) {
+                    break;
+                }
+                sleep($s);
+                $s = $s + $s;
+                echo "\n"; // echo + flush to detect if the client has disc.
+                ob_flush();
+                flush();
+            }
+        }
+        $this->response->setOutput(json_encode($meta));
     }
 
     public function install() {
