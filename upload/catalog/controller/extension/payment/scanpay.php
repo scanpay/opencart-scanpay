@@ -139,10 +139,8 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $shopid = (int)explode(':', $apikey)[0];
         $body = file_get_contents('php://input', false, null, 0, 512);
 
-        if (
-            $shopid === 0 || !isset($_SERVER['HTTP_X_SIGNATURE']) ||
-            !hash_equals(base64_encode(hash_hmac('sha256', $body, $apikey, true)), $_SERVER['HTTP_X_SIGNATURE'])
-        ) {
+        $sig = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+        if (!hash_equals(base64_encode(hash_hmac('sha256', $body, $apikey, true)), $sig)) {
             return $this->sendJson(['error' => 'invalid signature'], 403);
         }
 
@@ -189,7 +187,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 $this->db->query("UPDATE $this->seqTbl SET mtime = $mtime, seq = $seq WHERE shopid = $shopid");
 
                 touch($flock);
-                usleep(500000); // 500 ms
+                usleep(500000); // sleep for 500 ms (wait for changes)
                 if ($seq >= $ping['seq']) {
                     $ping['seq'] = (int)$this->db->query(
                         "SELECT ping FROM $this->seqTbl WHERE shopid = $shopid"
@@ -205,37 +203,29 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
     }
 
-    protected function changeIsValid(array $change): bool {
-        if ($change['type'] !== 'transaction') {
-            $this->log->write('scanpay error: Received unsupported seq type: ' . $change['type']);
-            die();
-        }
-        if (isset($change['error'])) {
-            $this->log->write("scanpay error: transaction [id=$change[id]] skipped due to error: $change[error]");
+    protected function changeIsValid(array $c): bool {
+        if (isset($c['error'])) {
+            $this->log->write("scanpay warning: transaction [id=$c[id]] skipped due to error: $c[error]");
             return false;
         }
-        if (!isset($change['id']) || !is_int($change['id'])) {
-            $this->log->write("scanpay error: Synchronization failed: missing 'id' in transaction");
-            die();
+        if (
+            !isset($c['rev'], $c['acts'], $c['id']) ||
+            !is_int($c['rev']) || !is_int($c['id']) || !is_array($c['acts'])
+        ) {
+            throw new Exception('received invalid seq from server');
         }
-        if (!isset($change['rev'], $change['acts']) || !is_int($change['rev']) || !is_array($change['acts'])) {
-            $this->log->write("scanpay error: Synchronization failed: received invalid seq from server");
-            die();
+
+        if ($c['type'] !== 'transaction') {
+            throw new Exception("received unknown seq type: $c[type]");
         }
-        if ($change['type'] === 'subscriber') {
-            if (!isset($change['ref'])) {
-                $this->log->write('scanpay warning: Received subscriber #' . $change['id'] . ' without ref');
-                return false;
-            }
-        } else {
-            if (empty($change['orderid']) || !is_numeric($change['orderid'])) {
-                $this->log->write("scanpay notice: transaction #{$change['id']} does not have an opencart orderid");
-                return true;
-            }
-            if (!isset($change['totals']['authorized'])) {
-                $this->log->write('scanpay error: received invalid seq from server');
-                die();
-            }
+
+        if (!isset($c['totals'], $c['totals']['authorized'])) {
+            throw new Exception('received invalid seq from server');
+        }
+
+        if (empty($c['orderid']) || !is_numeric($c['orderid'])) {
+            $this->log->write("scanpay notice: transaction #$c[id] skipped; no valid opencart orderid");
+            return false;
         }
         return true;
     }
