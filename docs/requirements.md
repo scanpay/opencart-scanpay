@@ -3,7 +3,7 @@
 * PHP version >= 7.4.
 * php-curl (libcurl >= 7.25.0).
 
-## PHP compatibility table
+### PHP compatibility table
 
 | PHP Features                              | Version |
 | :---------------------------------------- | :-----: |
@@ -16,7 +16,7 @@
 | Null coalescing operator                  | 7.0     |
 
 
-## libcurl compatibility table
+### libcurl compatibility table
 
 **Note**: We might at some point require `CURLOPT_DNS_SHUFFLE_ADDRESSES`.
 
