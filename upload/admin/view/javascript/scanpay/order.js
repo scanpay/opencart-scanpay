@@ -4,7 +4,9 @@
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('user_token');
     const orderid = urlParams.get('order_id');
-    let rev = 0;
+    const ajaxMetaUrl = 'index.php?route=extension/payment/scanpay/ajaxMeta&user_token=' +
+        token + '&orderid=' + urlParams.get('order_id');
+
     let status;
     let row;
 
@@ -22,11 +24,6 @@
                 localStorage.setItem('scanpay_cache', JSON.stringify(reqCache));
                 return o;
             });
-    }
-
-    function getMeta() {
-        return fetch('index.php?route=extension/payment/scanpay/ajaxMeta&user_token=' + token + '&orderid=' + orderid)
-            .then((res) => res.json());
     }
 
     function calcNetPayment(o) {
@@ -119,7 +116,32 @@
         }
     }
 
-    function init() {
+
+    let rev = 0;
+    function build(meta) {
+        if (!meta.trnid || meta.rev === rev) return;
+
+        updateOptsRow(meta);
+        buildTable(meta);
+        checkMismatch(meta);
+
+        if (!rev) {
+            // OpenCart JS is true BS. We put our checks here to avoid their actions.
+            checkExtensionVersion();
+            checkPingStatus();
+
+            // Add static links to the transaction
+            const dash = 'https://dashboard.scanpay.dk/' + meta.shopid + '/' + meta.trnid;
+            const h4 = document.getElementById('scanpay-h4');
+            h4.textContent = '#' + meta.trnid;
+            h4.href = dash;
+            document.getElementById('scanpay-capture-btn').href = dash + '/capture';
+            document.getElementById('scanpay-refund-btn').href = dash + '/refund';
+        }
+        rev = meta.rev;
+    }
+
+    function domReady() {
         status = document.getElementById('input-order-status').value;
         document.querySelector('h1').innerHTML = '#' + orderid; // replace 'Scanpay' with orderid
 
@@ -133,47 +155,29 @@
     }
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
+        document.addEventListener("DOMContentLoaded", domReady);
     } else {
-        init();
+        domReady();
     }
 
+    // We have to use onload because of OC :/
     window.addEventListener("load", () => {
-        getMeta().then((meta) => {
-            const dash = 'https://dashboard.scanpay.dk/' + meta.shopid + '/' + meta.trnid;
-            rev = meta.rev;
-            if (!meta.trnid) return;
-            buildTable(meta);
-            updateOptsRow(meta);
-            checkMismatch(meta);
+        fetch(ajaxMetaUrl)
+            .then((r) => r.json())
+            .then(build);
 
-            // Checks that only needs to be done once (onload)
-            checkExtensionVersion();
-            checkPingStatus();
-
-            // Add static links to the transaction
-            const h4 = document.getElementById('scanpay-h4');
-            h4.textContent = '#' + meta.trnid;
-            h4.href = dash;
-            document.getElementById('scanpay-capture-btn').href = dash + '/capture';
-            document.getElementById('scanpay-refund-btn').href = dash + '/refund';
-        });
-
+        let controller;
         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState !== "visible") return;
-            row.children[2].innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
-
-            setTimeout(() => {
-                getMeta()
-                    .then((meta) => {
-                        updateOptsRow(meta);
-                        if (!meta.trnid || meta.rev === rev) return;
-                        buildTable(meta);
-                        checkMismatch(meta);
-                        rev = o.rev;
-                    });
-            }, 500); // 500 ms
+            // Check for rev updates when user comes back from dashboard
+            if (document.visibilityState == "visible") {
+                controller = new AbortController();
+                fetch(ajaxMetaUrl + '&rev=' + rev, { signal: controller.signal })
+                    .then((r) => r.json())
+                    .then(build)
+                    .catch((e) => console.log(e));
+            } else if (controller) {
+                controller.abort();
+            }
         });
     });
-
 })();
