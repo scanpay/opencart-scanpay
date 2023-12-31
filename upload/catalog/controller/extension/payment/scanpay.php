@@ -82,51 +82,81 @@ class ControllerExtensionPaymentScanpay extends Controller {
         $this->response->setOutput(json_encode($data));
     }
 
+    protected function changeIsValid(array $c): bool {
+        if (isset($c['error'])) {
+            $this->log->write("scanpay warning: transaction [id=$c[id]] skipped due to error: $c[error]");
+            return false;
+        }
+        if (
+            !isset($c['rev'], $c['acts'], $c['id']) ||
+            !is_int($c['rev']) || !is_int($c['id']) || !is_array($c['acts'])
+        ) {
+            throw new Exception('received invalid seq from server');
+        }
+
+        if ($c['type'] !== 'transaction') {
+            throw new Exception("received unknown seq type: $c[type]");
+        }
+
+        if (!isset($c['totals'], $c['totals']['authorized'])) {
+            throw new Exception('received invalid seq from server');
+        }
+
+        if (empty($c['orderid']) || !is_numeric($c['orderid'])) {
+            $this->log->write("scanpay notice: transaction #$c[id] skipped; no valid opencart orderid");
+            return false;
+        }
+        return true;
+    }
+
     protected function applyChanges(int $shopid, array $arr) {
-        foreach ($arr as $change) {
-            if (!$this->changeIsValid($change)) {
+        foreach ($arr as $c) {
+            if (!$this->changeIsValid($c)) {
                 continue;
             }
-            $orderid = (int)$change['orderid'];
-            $order = $this->model_checkout_order->getOrder($orderid);
-            if (empty($order) || substr($order['payment_code'], 0, 7) !== 'scanpay') {
-                continue;
-            }
-
-            // Change 'scanpay_mobilepay' to 'scanpay' in the OpenCart order table
-            if ($order['payment_code'] !== 'scanpay') {
-                $this->db->query("UPDATE $this->ocTbl SET payment_code = 'scanpay' WHERE order_id = $orderid");
-            }
-
-            $rev = (int)$change['rev'];
-            $nacts = count($change['acts']);
-            $this->db->query(
-                "INSERT INTO $this->metaTbl
-                    SET
-                        orderid = $orderid,
-                        shopid = $shopid,
-                        trnid = '" . (int)$change['id'] . "',
-                        rev = $rev,
-                        nacts = $nacts,
-                        authorized = '" . $change['totals']['authorized'] . "',
-                        captured = '" . $change['totals']['captured'] . "',
-                        refunded = '" . $change['totals']['refunded'] . "',
-                        voided = '" . $change['totals']['voided'] . "'
-                    ON DUPLICATE KEY UPDATE
-                        rev = $rev,
-                        nacts = $nacts,
-                        authorized = '" . $change['totals']['authorized'] . "',
-                        captured = '" . $change['totals']['captured'] . "',
-                        refunded = '" . $change['totals']['refunded'] . "',
-                        voided = '" . $change['totals']['voided'] . "'"
-            );
-
-            if ($order['order_status_id'] === '0') {
-                $this->model_checkout_order->addOrderHistory(
-                    $orderid,
-                    $this->config->get('config_order_status_id'),
-                    'Scanpay: authorized ' . $change['totals']['authorized'],
-                    true
+            $orderid = (int)$c['orderid'];
+            $dbrev = $this->db->query("SELECT rev FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid")->row['rev'] ?? 0;
+            $rev = (int)$c['rev'];
+            $nacts = count($c['acts']);
+            if (!$dbrev) {
+                $this->db->query(
+                    "INSERT INTO $this->metaTbl
+                        SET orderid = $orderid,
+                            shopid = $shopid,
+                            trnid = '" . (int)$c['id'] . "',
+                            rev = $rev,
+                            nacts = $nacts,
+                            authorized = '" . $c['totals']['authorized'] . "',
+                            captured = '" . $c['totals']['captured'] . "',
+                            refunded = '" . $c['totals']['refunded'] . "',
+                            voided = '" . $c['totals']['voided'] . "'"
+                );
+                $order = $this->model_checkout_order->getOrder($orderid);
+                if (empty($order) || substr($order['payment_code'], 0, 7) !== 'scanpay') {
+                    continue;
+                }
+                // Change 'scanpay_mobilepay' to 'scanpay' in the OpenCart order table
+                if ($order['payment_code'] !== 'scanpay') {
+                    $this->db->query("UPDATE $this->ocTbl SET payment_code = 'scanpay' WHERE order_id = $orderid");
+                }
+                if ($order['order_status_id'] === '0') {
+                    $this->model_checkout_order->addOrderHistory(
+                        $orderid,
+                        $this->config->get('config_order_status_id'),
+                        'Scanpay: authorized ' . $c['totals']['authorized'],
+                        true
+                    );
+                }
+            } elseif ($rev > $dbrev) {
+                $this->db->query(
+                    "UPDATE $this->metaTbl
+                        SET rev = $rev,
+                            nacts = $nacts,
+                            authorized = '" . $c['totals']['authorized'] . "',
+                            captured = '" . $c['totals']['captured'] . "',
+                            refunded = '" . $c['totals']['refunded'] . "',
+                            voided = '" . $c['totals']['voided'] . "'
+                        WHERE orderid = $orderid AND shopid = $shopid"
                 );
             }
         }
@@ -201,33 +231,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $this->log->write('scanpay synchronization error: ' . $e->getMessage());
             return $this->sendJson(['error' => $e->getMessage()], 500);
         }
-    }
-
-    protected function changeIsValid(array $c): bool {
-        if (isset($c['error'])) {
-            $this->log->write("scanpay warning: transaction [id=$c[id]] skipped due to error: $c[error]");
-            return false;
-        }
-        if (
-            !isset($c['rev'], $c['acts'], $c['id']) ||
-            !is_int($c['rev']) || !is_int($c['id']) || !is_array($c['acts'])
-        ) {
-            throw new Exception('received invalid seq from server');
-        }
-
-        if ($c['type'] !== 'transaction') {
-            throw new Exception("received unknown seq type: $c[type]");
-        }
-
-        if (!isset($c['totals'], $c['totals']['authorized'])) {
-            throw new Exception('received invalid seq from server');
-        }
-
-        if (empty($c['orderid']) || !is_numeric($c['orderid'])) {
-            $this->log->write("scanpay notice: transaction #$c[id] skipped; no valid opencart orderid");
-            return false;
-        }
-        return true;
     }
 
     public function captureOnOrderStatus($_route, array $data) {
