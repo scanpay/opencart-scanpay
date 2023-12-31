@@ -115,10 +115,10 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 continue;
             }
             $orderid = (int)$c['orderid'];
-            $dbrev = $this->db->query("SELECT rev FROM $this->metaTbl WHERE orderid = $orderid AND shopid = $shopid")->row['rev'] ?? 0;
+            $dbRev = $this->db->query("SELECT rev FROM $this->metaTbl WHERE orderid = $orderid")->row['rev'] ?? 0;
             $rev = (int)$c['rev'];
             $nacts = count($c['acts']);
-            if (!$dbrev) {
+            if (!$dbRev) {
                 $this->db->query(
                     "INSERT INTO $this->metaTbl
                         SET orderid = $orderid,
@@ -147,7 +147,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
                         true
                     );
                 }
-            } elseif ($rev > $dbrev) {
+            } elseif ($rev > $dbRev) {
                 $this->db->query(
                     "UPDATE $this->metaTbl
                         SET rev = $rev,
@@ -156,7 +156,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
                             captured = '" . $c['totals']['captured'] . "',
                             refunded = '" . $c['totals']['refunded'] . "',
                             voided = '" . $c['totals']['voided'] . "'
-                        WHERE orderid = $orderid AND shopid = $shopid"
+                        WHERE orderid = $orderid"
                 );
             }
         }
