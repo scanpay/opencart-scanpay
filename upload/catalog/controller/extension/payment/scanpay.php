@@ -176,7 +176,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         try {
             while ($seq < $ping['seq']) {
                 $res = $client->seq($seq);
-                if (count($res['changes']) === 0) {
+                if (empty($res['changes'])) {
                     break; // done
                 }
                 $this->applyChanges($shopid, $res['changes']);
