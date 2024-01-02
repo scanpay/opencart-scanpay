@@ -138,7 +138,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
                 ping    INT unsigned NOT NULL,
                 mtime   BIGINT unsigned NOT NULL,
                 PRIMARY KEY (shopid)
-            ) CHARSET=latin1;"
+            ) CHARSET = latin1;"
         );
 
         $this->db->query(
