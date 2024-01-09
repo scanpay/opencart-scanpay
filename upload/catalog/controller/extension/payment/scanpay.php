@@ -110,9 +110,6 @@ class ControllerExtensionPaymentScanpay extends Controller {
     }
 
     protected function applyChanges(int $shopid, array $arr) {
-
-        error_reporting(-1);
-
         foreach ($arr as $c) {
             if (!$this->changeIsValid($c)) {
                 continue;
