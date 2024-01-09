@@ -84,7 +84,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
 
     protected function changeIsValid(array $c): bool {
         if (isset($c['error'])) {
-            $this->log->write("scanpay warning: transaction [id=$c[id]] skipped due to error: $c[error]");
+            $this->log->write("scanpay warning: transaction [id={$c['id']}] skipped due to error: {$c['error']}");
             return false;
         }
         if (
@@ -95,7 +95,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
 
         if ($c['type'] !== 'transaction') {
-            throw new Exception("received unknown seq type: $c[type]");
+            throw new Exception("received unknown seq type: {$c['type']}");
         }
 
         if (!isset($c['totals'], $c['totals']['authorized'])) {
@@ -103,28 +103,31 @@ class ControllerExtensionPaymentScanpay extends Controller {
         }
 
         if (empty($c['orderid']) || !is_numeric($c['orderid'])) {
-            $this->log->write("scanpay notice: transaction #$c[id] skipped; no valid opencart orderid");
+            $this->log->write("scanpay notice: transaction #{$c['id']} skipped; no valid opencart orderid");
             return false;
         }
         return true;
     }
 
     protected function applyChanges(int $shopid, array $arr) {
+
+        error_reporting(-1);
+
         foreach ($arr as $c) {
             if (!$this->changeIsValid($c)) {
                 continue;
             }
             $orderid = (int)$c['orderid'];
-            $dbRev = $this->db->query("SELECT rev FROM $this->metaTbl WHERE orderid = $orderid")->row['rev'] ?? 0;
-            $rev = (int)$c['rev'];
             $nacts = count($c['acts']);
+            $dbRev = $this->db->query("SELECT rev FROM $this->metaTbl WHERE orderid = $orderid")->row['rev'] ?? 0;
+
             if (!$dbRev) {
                 $this->db->query(
                     "INSERT INTO $this->metaTbl
                         SET orderid = $orderid,
                             shopid = $shopid,
-                            trnid = '" . (int)$c['id'] . "',
-                            rev = $rev,
+                            trnid = " . $c['id'] . ",
+                            rev = " . $c['rev'] . ",
                             nacts = $nacts,
                             authorized = '" . $c['totals']['authorized'] . "',
                             captured = '" . $c['totals']['captured'] . "',
@@ -147,12 +150,11 @@ class ControllerExtensionPaymentScanpay extends Controller {
                         true
                     );
                 }
-            } elseif ($rev > $dbRev) {
+            } elseif ($c['rev'] > $dbRev) {
                 $this->db->query(
                     "UPDATE $this->metaTbl
-                        SET rev = $rev,
+                        SET rev = " . $c['rev'] . ",
                             nacts = $nacts,
-                            authorized = '" . $c['totals']['authorized'] . "',
                             captured = '" . $c['totals']['captured'] . "',
                             refunded = '" . $c['totals']['refunded'] . "',
                             voided = '" . $c['totals']['voided'] . "'
@@ -185,7 +187,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
             $this->db->query("UPDATE $this->seqTbl SET mtime = $mtime WHERE shopid = $shopid");
             return $this->sendJson(['success' => true], 200);
         } elseif ($ping['seq'] < $seq) {
-            $errMsg = "The received ping seq ($ping[seq]) was smaller than the local seq ($seq)";
+            $errMsg = "The received ping seq ({$ping['seq']}) was smaller than the local seq ($seq)";
             $this->log->write('scanpay synchronization error: ' . $errMsg);
             return $this->sendJson(['error' => $errMsg], 400);
         }
@@ -195,7 +197,7 @@ class ControllerExtensionPaymentScanpay extends Controller {
         if (!@mkdir($flock) && file_exists($flock)) {
             $dtime = time() - filemtime($flock);
             if ($dtime >= 0 && $dtime < 60) {
-                $this->db->query("UPDATE $this->seqTbl SET ping = $ping[seq] WHERE shopid = $shopid");
+                $this->db->query("UPDATE $this->seqTbl SET ping = " . $ping['seq'] . " WHERE shopid = $shopid");
                 return $this->sendJson(['error' => 'busy'], 423);
             }
         }
